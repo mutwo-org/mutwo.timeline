@@ -1,18 +1,15 @@
+__all__ = (
+    "EventPlacementRegisterError",
+    "ExceedDurationError",
+    "EventPlacementNotFoundError",
+)
+
+
 class EventPlacementRegisterError(Exception):
     def __init__(self, event_placement_to_register, message: str = ""):
         super().__init__(
-            "Problem with EventPlacement on tag = "
-            f"'{event_placement_to_register.event.tag}': {message}"
-        )
-
-
-class OverlappingEventPlacementError(EventPlacementRegisterError):
-    def __init__(self, event_placement_to_register, event_placement_which_overlaps):
-        super().__init__(
-            event_placement_to_register,
-            f"Can't register EventPlacement '{event_placement_to_register}'"
-            " because it overlaps with already "
-            f"registerd EventPlacement '{event_placement_which_overlaps}'.",
+            "Problem with EventPlacement on tag_tuple = "
+            f"'{event_placement_to_register.tag_tuple}': {message}"
         )
 
 
@@ -23,4 +20,12 @@ class ExceedDurationError(EventPlacementRegisterError):
             f"EventPlacement '{event_placement_to_register} "
             "exceed predefined static duration = '{duration}' of "
             "TimeLine.",
+        )
+
+
+class EventPlacementNotFoundError(Exception):
+    def __init__(self, tag: str, index: int):
+        super().__init__(
+            f"Can't find EventPlacement with tag = '{tag}' "
+            f"and index = '{index}' in TimeLine!"
         )

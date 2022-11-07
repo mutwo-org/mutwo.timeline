@@ -32,11 +32,13 @@ __all__ = ("EventPlacement", "TimeLine")
 class EventPlacement(object):
     """Place any event at specific start and end times.
 
-    :param event: The event to be placed on a :class:`TimeLine`. This needs to
-        be an event with a `tag` property. The tag is necessary to concatenate
-        two events on a `TimeLine` which belong to the same object (e.g.
-        same instrument or same player).
-    :type event: core_events.TaggedSimpleEvent | core_events.TaggedSequentialEvent | core_events.SimultaneousEvent
+    :param event: The event to be placed on a :class:`TimeLine`.
+        This needs to be filled with events with a `tag` property. Each
+        child event represents a specific object (e.g. instrument or
+        player) The tag is necessary to concatenate two events on a
+        `TimeLine` which belong to the same object (e.g. same instrument
+        or same player).
+    :type event: core_events.SimultaneousEvent[core_events.TaggedSimpleEvent | core_events.TaggedSequentialEvent | core_events.SimultaneousEvent]
     :param start_or_start_range: Sets when the event starts. This can
         be a single :class:`mutwo.core_parameters.abc.Duration` or a
         :class:`ranges.Range` of two durations. In the second case
@@ -56,9 +58,11 @@ class EventPlacement(object):
 
     def __init__(
         self,
-        event: core_events.TaggedSimpleEvent
-        | core_events.TaggedSequentialEvent
-        | core_events.SimultaneousEvent,
+        event: core_events.SimultaneousEvent[
+            core_events.TaggedSimpleEvent
+            | core_events.TaggedSequentialEvent
+            | core_events.SimultaneousEvent
+        ],
         start_or_start_range: UnspecificTimeOrTimeRange,
         end_or_end_range: UnspecificTimeOrTimeRange,
     ):
@@ -148,6 +152,10 @@ class EventPlacement(object):
     # ###################################################################### #
 
     @property
+    def tag_tuple(self) -> tuple[str, ...]:
+        return tuple(event.tag for event in self.event)
+
+    @property
     def start_or_start_range(self) -> TimeOrTimeRange:
         return self._start_or_start_range
 
@@ -235,6 +243,7 @@ class EventPlacement(object):
         )
 
 
+# TODO(Add conflict solution hook to prevent overlaps!)
 class TimeLine(object):
     """Timeline to place events on.
 
@@ -246,10 +255,6 @@ class TimeLine(object):
         :class:`EventPlacement` with end > duration this would raise
         an error. Default to ``None``.
     :type duration: typing.Optional[UnspecificTime]
-    :param prohibit_overlaps: If set to ``True`` the :class:`TimeLine`
-        will prohibit any action which creates overlapping
-        :class:`EventPlacement` with the same tag. Default to ``True``.
-    :type prohibit_overlaps: bool
 
     **Warning:**
 
@@ -257,26 +262,17 @@ class TimeLine(object):
     like an event.
     """
 
-    MinStartTime: typing.TypeAlias = "Time"
-    TimeRange: typing.TypeAlias = ranges.Range
-    # In this way we can easily and very fast register
-    # new EventPlacements.
-    EventContainer: typing.TypeAlias = tuple[
-        list[MinStartTime], list[TimeRange], list[EventPlacement]
-    ]
-
     def __init__(
         self,
+        event_placement_sequence: typing.Sequence[EventPlacement] = [],
         duration: typing.Optional[UnspecificTime] = None,
-        prohibit_overlaps: bool = True,
-        *args,
-        **kwargs,
     ):
 
         self._dynamic_duration = duration is None
         self._duration = duration
-        self._tag_to_event_container: dict[str, TimeLine.EventContainer] = {}
-        self._prohibit_overlaps = prohibit_overlaps
+        self._event_placement_list: list[EventPlacement] = list(
+            event_placement_sequence
+        )
 
     # ###################################################################### #
     #                          public properties                             #
@@ -288,8 +284,8 @@ class TimeLine(object):
             try:
                 return max(
                     [
-                        event_container[1][-1].end
-                        for event_container in self._tag_to_event_container.values()
+                        event_placement.max_end
+                        for event_placement in self._event_placement_list
                     ]
                 )
             # If there isn't any registered EventPlacement yet.
@@ -299,8 +295,16 @@ class TimeLine(object):
             return self._duration
 
     @property
-    def prohibit_overlaps(self) -> bool:
-        return self._prohibit_overlaps
+    def event_placement_tuple(self) -> tuple[EventPlacement, ...]:
+        return tuple(self._event_placement_list)
+
+    @property
+    def tag_set(self) -> set[str]:
+        tag_set = set([])
+        for event_placement in self.event_placement_tuple:
+            for tag in event_placement.tag_tuple:
+                tag_set.add(tag)
+        return tag_set
 
     # ###################################################################### #
     #                          public methods                                #
@@ -312,89 +316,53 @@ class TimeLine(object):
         :param event_placement: The :class:`EventPlacement` which should be
             placed on the :class:`TimeLine`.
         :type event_placement: EventPlacement
-
-        When registering an `EventPlacement`, a copy of the `EventPlacement`
-        is saved. The registered `EventPlacement` will only be changeable by
-        methods provided by :class:`TimeLine`. In this way, :class:`TimeLine`
-        can internally easily and in an performant way register new
-        :class:`EventPlacement`s and check if any :class:`EventPlacement`
-        is overlapping with any already defined one.
         """
-        event_placement = event_placement.copy()
-        tag = event_placement.event.tag
-        time_range = event_placement.time_range
-        start = time_range.start
+        end = event_placement.max_end
 
         if not self._dynamic_duration:
-            if time_range.end > (duration := self.duration):
+            if end > (duration := self.duration):
                 raise timeline_utilities.ExceedDurationError(event_placement, duration)
 
-        try:
-            (
-                start_list,
-                time_range_list,
-                event_placement_list,
-            ) = self._tag_to_event_container[tag]
-        except KeyError:
-            self._tag_to_event_container.update(
-                {tag: ([start], [time_range], [event_placement])}
+        self._event_placement_list.append(event_placement)
+
+    @core_utilities.add_copy_option
+    def sort(self, mutate: bool = True) -> TimeLine:
+        """Sort :class:`EventPlacement`s by start time (and if equal by end time)."""
+
+        self._event_placement_list.sort(
+            key=lambda event_placement: (
+                event_placement.min_start,
+                event_placement.max_end,
             )
-            return
+        )
+        return self
 
-        insert_index = bisect.bisect_left(start_list, start)
+    def get_event_placement(
+        self, tag: str, index: int, *, sort: bool = True
+    ) -> EventPlacement:
+        """Find specific :class:`EventPlacement`
 
-        try:
-            event_placement_after = event_placement_list[insert_index]
-        except IndexError:
-            event_placement_after = None
-
-        if self.prohibit_overlaps:
-            before_insert_index = insert_index - 1
-            event_placement_to_compare_list = (
-                [event_placement_list[before_insert_index]]
-                if before_insert_index >= 0
-                else []
-            )
-            if event_placement_after is not None:
-                event_placement_to_compare_list.append(event_placement_after)
-            for event_placement_to_compare in event_placement_to_compare_list:
-                if event_placement.is_overlapping(event_placement_to_compare):
-                    raise timeline_utilities.OverlappingEventPlacementError(
-                        event_placement, event_placement_to_compare
-                    )
-
-        # If both EventPlacement are at the same time,
-        # we will move the EventPlacement with the later end
-        # time to the second position.
-        if (
-            event_placement_after is not None
-            and start_list[insert_index] == start
-            and time_range.end > time_range_list[insert_index].end
-        ):
-            insert_index += 1
-
-        start_list.insert(insert_index, start)
-        time_range_list.insert(insert_index, time_range)
-        event_placement_list.insert(insert_index, event_placement)
-
-    def fetch_tag_to_event_placement_dict(
-        self,
-    ) -> dict[str, tuple[EventPlacement, ...]]:
-        """Fetch a tag -> tuple[event_placement, ...] dict.
-
-        **Warning:**
-
-        The returned :class:`EventPlacement`s are copies of the
-        internal :class:`EventPlacement`s of the :class:`TimeLine`.
-        In this way the :class:`TimeLine` can ensure internal consistency.
-        This means that `fetch_tag_to_event_placement_dict` is
-        an expensive operation, because it needs to copy all
-        :class:`EventPlacement`. It also means that any changes
-        on the returned objects won't affect any objects
-        inside the :class:`TimeLine`.
+        :param tag: The tag which the :class:`EventPlacement` should include.
+        :type tag: str
+        :param index: The index of the :class:`EventPlacement`
+        :type index: int
+        :param sort: Can be set to ``False`` when sequentially calling
+            `get_event_placement` without changing the :class:`TimeLine`.
+            When `sort = False`, but the :class:`TimeLine` (or any
+            :class:`EventPlacement` inside the time :class:`TimeLine`
+            has changed unexpected results may happen. If you want to be
+            sure not to break anything, just leave it as ``True``.
+            Default to ``True``.
+        :type sort: bool
         """
-
-        return {
-            tag: tuple(event_placement.copy() for event_placement in event_container[2])
-            for tag, event_container in self._tag_to_event_container.items()
-        }
+        if sort:
+            self.sort()
+        for counter, event_placement in enumerate(
+            filter(
+                lambda event_placement: tag in event_placement.tag_tuple,
+                self.event_placement_tuple,
+            )
+        ):
+            if counter == index:
+                return event_placement
+        raise timeline_utilities.EventPlacementNotFoundError(tag, index)

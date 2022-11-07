@@ -11,12 +11,12 @@ from mutwo import timeline_utilities
 class EventPlacementTest(unittest.TestCase):
     def setUp(self):
         self.event_placement_with_start_and_end = timeline_interfaces.EventPlacement(
-            core_events.TaggedSimpleEvent(1), 0, 1
+            core_events.SimultaneousEvent([core_events.TaggedSimpleEvent(1)]), 0, 1
         )
 
         self.event_placement_with_start_range_and_end_range = (
             timeline_interfaces.EventPlacement(
-                core_events.TaggedSimpleEvent(1),
+                core_events.SimultaneousEvent([core_events.TaggedSimpleEvent(1)]),
                 ranges.Range(0, 0.5),
                 ranges.Range(1, 1.5),
             )
@@ -77,14 +77,18 @@ class EventPlacementTest(unittest.TestCase):
         )
 
     def test_is_overlapping(self):
-        event = core_events.TaggedSimpleEvent(1, tag="test")
+        event = core_events.SimultaneousEvent(
+            [core_events.TaggedSimpleEvent(1, tag="test")]
+        )
         event_placement0 = timeline_interfaces.EventPlacement(event, 1, 2)
         event_placement1 = timeline_interfaces.EventPlacement(event, 0, 3)
         event_placement2 = timeline_interfaces.EventPlacement(
             event, ranges.Range(0.5, 1), ranges.Range(2.5, 4)
         )
         event_placement3 = timeline_interfaces.EventPlacement(event, 10, 12)
-        event_placement4 = timeline_interfaces.EventPlacement(event, 2, ranges.Range(4, 10))
+        event_placement4 = timeline_interfaces.EventPlacement(
+            event, 2, ranges.Range(4, 10)
+        )
 
         self.assertTrue(event_placement0.is_overlapping(event_placement1))
         self.assertTrue(event_placement1.is_overlapping(event_placement0))
@@ -145,76 +149,90 @@ class EventPlacementTest(unittest.TestCase):
 
 class TimeLineTest(unittest.TestCase):
     def setUp(self):
+        self.tag = "test"
         self.static_duration = core_parameters.DirectDuration(10)
-        self.event = core_events.TaggedSimpleEvent(1, tag="test")
-        self.timeline_static_prohibited = timeline_interfaces.TimeLine(
-            duration=self.static_duration, prohibit_overlaps=True
+        self.event = core_events.SimultaneousEvent(
+            [core_events.TaggedSimpleEvent(1, tag=self.tag)]
         )
-        self.timeline_dynamic_prohibited = timeline_interfaces.TimeLine(
-            duration=None, prohibit_overlaps=True
-        )
-        self.timeline_dynamic_allowed = timeline_interfaces.TimeLine(
-            duration=None, prohibit_overlaps=False
-        )
-        self.timeline_static_allowed = timeline_interfaces.TimeLine(
-            duration=self.static_duration, prohibit_overlaps=False
+        self.timeline_dynamic = timeline_interfaces.TimeLine(duration=None)
+        self.timeline_static = timeline_interfaces.TimeLine(
+            duration=self.static_duration
         )
         self.timeline_tuple = (
-            self.timeline_static_prohibited,
-            self.timeline_dynamic_prohibited,
-            self.timeline_static_allowed,
-            self.timeline_dynamic_allowed,
+            self.timeline_static,
+            self.timeline_dynamic,
         )
 
     def test_register_basic(self):
         event_placement = timeline_interfaces.EventPlacement(self.event, 2, 5)
         for timeline in self.timeline_tuple:
             timeline.register(event_placement)
-            tag_to_event_placement = timeline.fetch_tag_to_event_placement_dict()
-            self.assertEqual(len(tag_to_event_placement), 1)
-            self.assertEqual(len(tag_to_event_placement["test"]), 1)
-            self.assertEqual(tag_to_event_placement["test"][0], event_placement)
-
-    def test_register_order(self):
-        event_placement_tuple = (
-            timeline_interfaces.EventPlacement(self.event, 2, 4),
-            timeline_interfaces.EventPlacement(self.event, 0, 2),
-            timeline_interfaces.EventPlacement(self.event, 6, 8),
-            timeline_interfaces.EventPlacement(self.event, 4, 4.5),
-            timeline_interfaces.EventPlacement(self.event, 4.5, 6),
-        )
-        for timeline in self.timeline_tuple:
-            for event_placement in event_placement_tuple:
-                timeline.register(event_placement)
-            tag_to_event_placement = timeline.fetch_tag_to_event_placement_dict()
-            for registered_event_placement, expected_event_placement in zip(
-                tag_to_event_placement[self.event.tag],
-                sorted(
-                    event_placement_tuple,
-                    key=lambda event_placement: event_placement.min_start,
-                ),
-            ):
-                self.assertEqual(registered_event_placement, expected_event_placement)
-
-    def test_register_overlap(self):
-        event_placement0 = timeline_interfaces.EventPlacement(self.event, 2, 4)
-        event_placement1 = timeline_interfaces.EventPlacement(self.event, 3, 5)
-
-        self.assertTrue(event_placement0.is_overlapping(event_placement1))
-
-        self.timeline_static_allowed.register(event_placement0)
-        self.timeline_static_prohibited.register(event_placement0)
-
-        self.timeline_static_allowed.register(event_placement1)
-        self.assertRaises(
-            timeline_utilities.OverlappingEventPlacementError,
-            self.timeline_static_prohibited.register,
-            event_placement1,
-        )
+            event_placement_tuple = timeline.event_placement_tuple
+            self.assertEqual(len(event_placement_tuple), 1)
+            self.assertEqual(event_placement_tuple[0], event_placement)
 
     def test_register_exceeding_duration(self):
         self.assertRaises(
             timeline_utilities.ExceedDurationError,
-            self.timeline_static_allowed.register,
+            self.timeline_static.register,
             timeline_interfaces.EventPlacement(self.event, 8, 11),
         )
+
+    def test_sort(self):
+        event_placement0 = timeline_interfaces.EventPlacement(self.event, 2, 5)
+        event_placement1 = timeline_interfaces.EventPlacement(self.event, 0, 1)
+        event_placement2 = timeline_interfaces.EventPlacement(self.event, 2, 6)
+
+        self.timeline_static.register(event_placement0)
+        self.timeline_static.register(event_placement1)
+        self.timeline_static.register(event_placement2)
+
+        self.assertEqual(
+            self.timeline_static.event_placement_tuple,
+            (event_placement0, event_placement1, event_placement2),
+        )
+
+        self.timeline_static.sort()
+        self.assertEqual(
+            self.timeline_static.event_placement_tuple,
+            (event_placement1, event_placement0, event_placement2),
+        )
+
+    def test_get_event_placement(self):
+        event_placement0 = timeline_interfaces.EventPlacement(self.event, 0, 1)
+        event_placement1 = timeline_interfaces.EventPlacement(self.event, 2, 3)
+        event_placement2 = timeline_interfaces.EventPlacement(self.event, 5, 10)
+
+        timeline = timeline_interfaces.TimeLine(
+            [event_placement0, event_placement2, event_placement1]
+        )
+
+        self.assertEqual(timeline.get_event_placement(self.tag, 0), event_placement0)
+        self.assertEqual(timeline.get_event_placement(self.tag, 1), event_placement1)
+        self.assertEqual(timeline.get_event_placement(self.tag, 2), event_placement2)
+
+    def test_tag_set(self):
+        timeline = timeline_interfaces.TimeLine(
+            [
+                timeline_interfaces.EventPlacement(
+                    core_events.SimultaneousEvent(
+                        [
+                            core_events.TaggedSimpleEvent(1, tag="abc"),
+                            core_events.TaggedSimpleEvent(1, tag="def"),
+                        ]
+                    ),
+                    0,
+                    1,
+                ),
+                timeline_interfaces.EventPlacement(
+                    core_events.SimultaneousEvent(
+                        [
+                            core_events.TaggedSimpleEvent(1, tag="ghi"),
+                        ]
+                    ),
+                    10,
+                    20,
+                ),
+            ]
+        )
+        self.assertEqual(timeline.tag_set, {"abc", "def", "ghi"})
