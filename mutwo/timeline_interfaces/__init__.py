@@ -62,8 +62,6 @@ class EventPlacement(object):
         start_or_start_range: UnspecificTimeOrTimeRange,
         end_or_end_range: UnspecificTimeOrTimeRange,
     ):
-        # Ensure we get ranges filled with Duration objects or single
-        # duration objects.
         self.start_or_start_range = start_or_start_range
         self.end_or_end_range = end_or_end_range
         self.event = event
@@ -76,6 +74,8 @@ class EventPlacement(object):
     def _unspecified_to_specified_time_or_time_range(
         unspecified_time_or_time_range: UnspecificTimeOrTimeRange,
     ) -> TimeOrTimeRange:
+        # Ensure we get ranges filled with Duration objects or single
+        # duration objects.
         if isinstance(unspecified_time_or_time_range, ranges.Range):
             return ranges.Range(
                 *tuple(
