@@ -87,8 +87,6 @@ class TimeLineToSimultaneousEventTest(unittest.TestCase):
     def test_convert(self):
         simultaneous_event = self.timeline_to_simultaneous_event.convert(self.timeline)
 
-        print(simultaneous_event[0][0])
-
         self.assertEqual(len(simultaneous_event), 2)
         self.assertTrue(simultaneous_event[0].tag, self.simple_event_a.tag)
         self.assertTrue(simultaneous_event[1].tag, self.simple_event_b.tag)
