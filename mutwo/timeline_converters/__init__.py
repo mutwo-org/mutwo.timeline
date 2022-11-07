@@ -6,7 +6,7 @@ import ranges
 from mutwo import core_converters
 from mutwo import core_events
 from mutwo import core_parameters
-from mutwo import timeline_events
+from mutwo import timeline_interfaces
 from mutwo import timeline_utilities
 
 
@@ -26,7 +26,7 @@ class EventPlacementTupleToSequentialEvent(core_converters.abc.Converter):
         return time_or_time_range
 
     def _event_placement_to_start_and_end(
-        self, event_placement: timeline_events.EventPlacement
+        self, event_placement: timeline_interfaces.EventPlacement
     ) -> tuple[core_parameters.abc.Duration, core_parameters.abc.Duration]:
         return (
             self._time_or_time_range_to_time(event_placement.start_or_start_range),
@@ -35,7 +35,7 @@ class EventPlacementTupleToSequentialEvent(core_converters.abc.Converter):
 
     def convert(
         self,
-        event_placement_tuple: tuple[timeline_events.EventPlacement, ...],
+        event_placement_tuple: tuple[timeline_interfaces.EventPlacement, ...],
         duration: typing.Optional[core_parameters.abc.Duration | typing.Any] = None,
     ) -> core_events.SequentialEvent:
         duration = core_events.configurations.UNKNOWN_OBJECT_TO_DURATION(duration)
@@ -77,7 +77,7 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
         )
 
     def convert(
-        self, timeline_to_convert: timeline_events.TimeLine
+        self, timeline_to_convert: timeline_interfaces.TimeLine
     ) -> core_events.SimultaneousEvent[core_events.TaggedSequentialEvent]:
         duration = timeline_to_convert.duration
         tag_to_event_placement_tuple_dict = (

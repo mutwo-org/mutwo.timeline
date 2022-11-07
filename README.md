@@ -17,7 +17,7 @@ independent start and end times in `mutwo`.
 This extension implements:
 
 - `mutwo.timeline_converters`
-- `mutwo.timeline_events`
+- `mutwo.timeline_interfaces`
 - `mutwo.timeline_utilities`
 
 ### Installation

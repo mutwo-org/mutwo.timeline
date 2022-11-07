@@ -5,7 +5,7 @@ import quicktions as fractions
 
 from mutwo import core_events
 from mutwo import timeline_converters
-from mutwo import timeline_events
+from mutwo import timeline_interfaces
 
 
 class EventPlacementTupleToSequentialEventTest(unittest.TestCase):
@@ -18,9 +18,9 @@ class EventPlacementTupleToSequentialEventTest(unittest.TestCase):
         event = core_events.TaggedSimpleEvent(1, tag="test")
         rest = core_events.SimpleEvent(1)
         event_placement_tuple = (
-            timeline_events.EventPlacement(event, 1, 3),
-            timeline_events.EventPlacement(event, 3, 4),
-            timeline_events.EventPlacement(event, ranges.Range(5.5, 6), 7),
+            timeline_interfaces.EventPlacement(event, 1, 3),
+            timeline_interfaces.EventPlacement(event, 3, 4),
+            timeline_interfaces.EventPlacement(event, ranges.Range(5.5, 6), 7),
         )
         duration = 10
 
@@ -58,14 +58,14 @@ class TimeLineToSimultaneousEventTest(unittest.TestCase):
         self.timeline_to_simultaneous_event = (
             timeline_converters.TimeLineToSimultaneousEvent()
         )
-        self.timeline = timeline_events.TimeLine()
+        self.timeline = timeline_interfaces.TimeLine()
 
         self.event_a = core_events.TaggedSimpleEvent(1, tag="a")
         self.event_b = core_events.TaggedSimpleEvent(1, tag="b")
-        self.timeline.register(timeline_events.EventPlacement(self.event_a, 0, 1))
-        self.timeline.register(timeline_events.EventPlacement(self.event_a, 2, 3))
+        self.timeline.register(timeline_interfaces.EventPlacement(self.event_a, 0, 1))
+        self.timeline.register(timeline_interfaces.EventPlacement(self.event_a, 2, 3))
         self.timeline.register(
-            timeline_events.EventPlacement(self.event_b, 1, ranges.Range(4, 6))
+            timeline_interfaces.EventPlacement(self.event_b, 1, ranges.Range(4, 6))
         )
 
     def test_convert(self):
