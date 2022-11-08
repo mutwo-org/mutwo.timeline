@@ -19,6 +19,7 @@ class TimeLineToEventPlacementDict(core_converters.abc.Converter):
     def convert(
         self, timeline_to_convert: timeline_interfaces.TimeLine
     ) -> dict[Tag, tuple[timeline_interfaces.EventPlacement, ...]]:
+        # TODO(Maybe add 'timeline_to_convert.sort()'?)
         tag_to_event_placement_list = {tag: [] for tag in timeline_to_convert.tag_set}
         for event_placement in timeline_to_convert.event_placement_tuple:
             for tag in event_placement.tag_tuple:
@@ -106,6 +107,19 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
             rest_duration = start - sequential_event_duration
             if rest_duration > 0:
                 sequential_event.append(core_events.SimpleEvent(rest_duration))
+
+            # TODO(We need to check for overlaps. If we find overlaps:
+            #       (a) with prohibit flag
+            #       (b) with allow flag
+            #
+            #       (a) raise Exception
+            #       (b) check for all other SequentialEvents,
+            #           how many are they where we don't have
+            #           any conflicts? Where are they? (save in list)
+            #           If there aren't enough, add new sequential events.
+            #           Then: only append to the sequential events without
+            #           conflicts.
+            # elif rest_duration < 0
 
         event_to_append_duration = event_to_append.duration
 
