@@ -19,7 +19,7 @@ class TimeLineToEventPlacementDict(core_converters.abc.Converter):
     def convert(
         self, timeline_to_convert: timeline_interfaces.TimeLine
     ) -> dict[Tag, tuple[timeline_interfaces.EventPlacement, ...]]:
-        # TODO(Maybe add 'timeline_to_convert.sort()'?)
+        timeline_to_convert.sort()
         tag_to_event_placement_list = {tag: [] for tag in timeline_to_convert.tag_set}
         for event_placement in timeline_to_convert.event_placement_tuple:
             for tag in event_placement.tag_tuple:
