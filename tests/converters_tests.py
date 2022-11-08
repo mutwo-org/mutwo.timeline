@@ -135,3 +135,57 @@ class TimeLineToEventPlacementTupleTest(unittest.TestCase):
             ),
             tuple(self.event_placement_list),
         )
+
+
+class EventPlacementTupleToSplitEventPlacementDictTest(unittest.TestCase):
+    def test_convert(self):
+        self.tag0, self.tag1 = "ab"
+        self.event0, self.event1 = (
+            core_events.TaggedSimultaneousEvent(
+                [core_events.SequentialEvent([core_events.SimpleEvent(1)])], tag=tag
+            )
+            for tag in (self.tag0, self.tag1)
+        )
+        self.event_placement_tuple = (
+            timeline_interfaces.EventPlacement(
+                core_events.SimultaneousEvent([self.event1]), 0, 4
+            ),
+            timeline_interfaces.EventPlacement(
+                core_events.SimultaneousEvent([self.event0]), 1, 3
+            ),
+            timeline_interfaces.EventPlacement(
+                core_events.SimultaneousEvent([self.event0, self.event1]), 5, 7
+            ),
+        )
+
+        self.split_event_placement_tuple0 = (
+            timeline_interfaces.EventPlacement(
+                core_events.SimultaneousEvent([self.event0]), 1, 3
+            ),
+            timeline_interfaces.EventPlacement(
+                core_events.SimultaneousEvent([self.event0]), 5, 7
+            ),
+        )
+
+        self.split_event_placement_tuple1 = (
+            timeline_interfaces.EventPlacement(
+                core_events.SimultaneousEvent([self.event1]), 0, 4
+            ),
+            timeline_interfaces.EventPlacement(
+                core_events.SimultaneousEvent([self.event1]), 5, 7
+            ),
+        )
+
+        event_placement_tuple_to_split_event_placement = (
+            timeline_converters.EventPlacementTupleToSplitEventPlacementDict()
+        )
+
+        self.assertEqual(
+            event_placement_tuple_to_split_event_placement.convert(
+                self.event_placement_tuple
+            ),
+            {
+                self.tag0: self.split_event_placement_tuple0,
+                self.tag1: self.split_event_placement_tuple1,
+            },
+        )

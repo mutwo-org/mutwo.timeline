@@ -233,3 +233,40 @@ class TimeLineToEventPlacementTuple(core_converters.abc.Converter):
                 event_placement_list.append(event_placement.copy())
 
         return tuple(event_placement_list)
+
+
+class EventPlacementTupleToSplitEventPlacementDict(core_converters.abc.Converter):
+    """Split :class:`~mutwo.timeline_interfaces.EventPlacement` into new `EventPlacement`s by tags.
+
+    So the returned `event` attribute of each returned
+    :class:`mutwo.timeline_interfaces.EventPlacement` only
+    contains one specific tagged event.
+    """
+
+    def convert(
+        self,
+        event_placement_tuple_to_convert: tuple[
+            timeline_interfaces.EventPlacement, ...
+        ],
+    ) -> dict[Tag, tuple[timeline_interfaces.EventPlacement, ...]]:
+        tag_to_event_placement_list: dict[
+            str, list[timeline_interfaces.EventPlacement]
+        ] = {}
+        for event_placement in event_placement_tuple_to_convert:
+            for event_index, event in enumerate(event_placement.event):
+                try:
+                    event_placement_list = tag_to_event_placement_list[event.tag]
+                except KeyError:
+                    event_placement_list = []
+                    tag_to_event_placement_list.update(
+                        {event.tag: event_placement_list}
+                    )
+                new_event_placement = event_placement.copy()
+                new_event_placement.event = core_events.SimultaneousEvent(
+                    [new_event_placement.event[event_index]]
+                )
+                event_placement_list.append(new_event_placement)
+        return {
+            tag: tuple(event_placement_list)
+            for tag, event_placement_list in tag_to_event_placement_list.items()
+        }
