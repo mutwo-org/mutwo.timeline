@@ -270,3 +270,52 @@ class EventPlacementTupleToSplitEventPlacementDict(core_converters.abc.Converter
             tag: tuple(event_placement_list)
             for tag, event_placement_list in tag_to_event_placement_list.items()
         }
+
+
+class EventPlacementTupleToGaplessEventPlacementTuple(core_converters.abc.Converter):
+    """Fill empty :class:`~mutwo.timeline_interfaces.EventPlacement` into the gaps between two `EventPlacement`."""
+
+    def convert(
+        self,
+        event_placement_tuple_to_convert: tuple[
+            timeline_interfaces.EventPlacement, ...
+        ],
+        duration: typing.Optional[core_parameters.abc.Duration] = None,
+    ) -> tuple[timeline_interfaces.EventPlacement, ...]:
+        def add_rest(
+            start: core_parameters.abc.Duration, end: core_parameters.abc.Duration
+        ):
+            new_event_placement_list.append(
+                timeline_interfaces.EventPlacement(
+                    core_events.SimultaneousEvent(
+                        [core_events.TaggedSimpleEvent(0, tag=tag)]
+                    ),
+                    start,
+                    end,
+                )
+            )
+
+        event_placement_list = sorted(
+            event_placement_tuple_to_convert,
+            key=lambda event_placement: (
+                event_placement.min_start,
+                event_placement.max_end,
+            ),
+        )
+
+        new_event_placement_list = []
+        last_end = 0
+        tag = None
+        for event_placement in event_placement_list:
+            if tag is None:
+                tag = event_placement.event[0].tag
+            start, end = event_placement.min_start, event_placement.max_end
+            if start > last_end:
+                add_rest(last_end, start)
+            new_event_placement_list.append(event_placement.copy())
+            last_end = end
+
+        if duration is not None and last_end < duration:
+            add_rest(last_end, duration)
+
+        return tuple(new_event_placement_list)

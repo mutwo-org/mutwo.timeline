@@ -189,3 +189,34 @@ class EventPlacementTupleToSplitEventPlacementDictTest(unittest.TestCase):
                 self.tag1: self.split_event_placement_tuple1,
             },
         )
+
+
+class EventPlacementTupleToGaplessEventPlacementTupleTest(unittest.TestCase):
+    def test_convert(self):
+        event = core_events.SimultaneousEvent(
+            [core_events.TaggedSimpleEvent(1, tag="a")]
+        )
+        rest = core_events.SimultaneousEvent(
+            [core_events.TaggedSimpleEvent(0, tag="a")]
+        )
+        event_placement_tuple = (
+            timeline_interfaces.EventPlacement(event, 0, 4),
+            timeline_interfaces.EventPlacement(event, 6, 8),
+        )
+        gapless_event_placement_tuple = (
+            timeline_interfaces.EventPlacement(event, 0, 4),
+            timeline_interfaces.EventPlacement(rest, 4, 6),
+            timeline_interfaces.EventPlacement(event, 6, 8),
+            timeline_interfaces.EventPlacement(rest, 8, 10),
+        )
+
+        event_placement_tuple_to_gapless_event_placement_tuple = (
+            timeline_converters.EventPlacementTupleToGaplessEventPlacementTuple()
+        )
+
+        self.assertEqual(
+            gapless_event_placement_tuple,
+            event_placement_tuple_to_gapless_event_placement_tuple.convert(
+                event_placement_tuple, duration=10
+            ),
+        )
