@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2022-11-08
+
+### Added
+- `timeline_converters.EventPlacementTupleToGaplessEventPlacementTuple`
+- `timeline_converters.EventPlacementTupleToSplitEventPlacementDict`
+- `timeline_converters.TimeLineToEventPlacementTuple`
+
+
 ## [0.2.0] - 2022-11-07
 
 ### Changed
@@ -18,6 +26,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Removed
 - overlap checks in `TimeLine.register`
 - `timeline_converters.EventPlacementTupleToSequentialEvent`: replaced by more powerful `timeline_converters.TimeLineToSimultaneousEvent`
+
 
 ## [0.1.0] - 2022-11-06
 
