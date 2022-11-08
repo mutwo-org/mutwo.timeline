@@ -209,3 +209,27 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
         return core_events.SimultaneousEvent(
             tuple(tag_to_tagged_simultaneous_event.values())
         )
+
+
+class TimeLineToEventPlacementTuple(core_converters.abc.Converter):
+    """Fetch from :class:`~mutwo.timeline_interfaces.TimeLine` all :class:`~mutwo.timeline_interfaces.EventPlacement` which contains of user defined tags.
+
+    Unlike :class:`TimeLineToEventPlacementDict` this converter
+    doesn't split the fetched :class:`mutwo.timeline_interfaces.EventPlacement`s
+    into different `tuples`, but returns all of them in one common `tuple`.
+    """
+
+    def convert(
+        self,
+        timeline_to_convert: timeline_interfaces.TimeLine,
+        tag_tuple: tuple[Tag, ...],
+    ) -> tuple[timeline_interfaces.EventPlacement, ...]:
+        timeline_to_convert.sort()
+
+        # XXX: Should we add any checks for overlaps?
+        event_placement_list: list[timeline_interfaces.EventPlacement] = []
+        for event_placement in timeline_to_convert.event_placement_tuple:
+            if any([tag in tag_tuple for tag in event_placement.tag_tuple]):
+                event_placement_list.append(event_placement.copy())
+
+        return tuple(event_placement_list)

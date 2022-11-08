@@ -95,3 +95,43 @@ class TimeLineToSimultaneousEventTest(unittest.TestCase):
         self.assertEqual(len(simultaneous_event[0][1]), 3)
         self.assertEqual(len(simultaneous_event[1][0]), 3)
         self.assertEqual(simultaneous_event[0].duration, simultaneous_event[1].duration)
+
+
+class TimeLineToEventPlacementTupleTest(unittest.TestCase):
+    def setUp(self):
+        self.tag0, self.tag1 = "ab"
+        self.event0, self.event1 = (
+            core_events.TaggedSimultaneousEvent(
+                [core_events.SequentialEvent([core_events.SimpleEvent(1)])], tag=tag
+            )
+            for tag in (self.tag0, self.tag1)
+        )
+        self.event_placement_list = [
+            timeline_interfaces.EventPlacement(
+                core_events.SimultaneousEvent([self.event1]), 0, 4
+            ),
+            timeline_interfaces.EventPlacement(
+                core_events.SimultaneousEvent([self.event0]), 1, 3
+            ),
+            timeline_interfaces.EventPlacement(
+                core_events.SimultaneousEvent([self.event0, self.event1]), 5, 7
+            ),
+        ]
+        self.timeline = timeline_interfaces.TimeLine(self.event_placement_list)
+
+        self.timeline_to_event_placement_tuple = (
+            timeline_converters.TimeLineToEventPlacementTuple()
+        )
+
+    def test_convert(self):
+        self.assertEqual(
+            self.timeline_to_event_placement_tuple.convert(self.timeline, (self.tag0,)),
+            (self.event_placement_list[1], self.event_placement_list[2]),
+        )
+
+        self.assertEqual(
+            self.timeline_to_event_placement_tuple.convert(
+                self.timeline, (self.tag0, self.tag1)
+            ),
+            tuple(self.event_placement_list),
+        )
