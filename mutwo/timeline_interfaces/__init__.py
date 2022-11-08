@@ -319,6 +319,12 @@ class TimeLine(object):
         """
         end = event_placement.max_end
 
+        # TODO(I think we should move the ExceedDurationError also to
+        # follow-up classes (same like OverlapError). Why? This
+        # improves performance here. And I'm not sure if a static
+        # duration of TimeLine makes sense. On the other hand it
+        # makes sense to stretch all outcoming events to the same
+        # duration in the end.)
         if not self._dynamic_duration:
             if end > (duration := self.duration):
                 raise timeline_utilities.ExceedDurationError(event_placement, duration)
