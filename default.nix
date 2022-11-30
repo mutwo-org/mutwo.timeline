@@ -3,7 +3,7 @@ with pkgs.python310Packages;
 
 let
 
-  mutwo-core-archive = builtins.fetchTarball "https://github.com/mutwo-org/mutwo.core/archive/83efe12fb98119e03db833c231f9c87956577b3f.tar.gz";
+  mutwo-core-archive = builtins.fetchTarball "https://github.com/mutwo-org/mutwo.core/archive/deaaac1d23df10eb70e7864d6f739e28816eec29.tar.gz";
   mutwo-core = import (mutwo-core-archive + "/default.nix");
 
   python-ranges = pkgs.python310Packages.buildPythonPackage rec {
