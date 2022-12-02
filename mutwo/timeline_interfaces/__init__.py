@@ -290,7 +290,7 @@ class TimeLine(object):
                 )
             # If there isn't any registered EventPlacement yet.
             except ValueError:
-                return 0
+                return core_parameters.DirectDuration(0)
         else:
             return self._duration
 
