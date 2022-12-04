@@ -8,6 +8,7 @@ import ranges
 from mutwo import core_converters
 from mutwo import core_events
 from mutwo import core_parameters
+from mutwo import core_utilities
 from mutwo import timeline_interfaces
 
 __all__ = ("TimeLineToEventPlacementDict", "TimeLineToSimultaneousEvent")
@@ -94,20 +95,16 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
             core_events.SequentialEvent[core_events.SimpleEvent]
         ],
     ):
-        sequential_event_to_add_count = len(event_to_append) - len(simultaneous_event)
-        if sequential_event_to_add_count > 0:
-            sequential_event_list = [
-                core_events.SequentialEvent([])
-                for _ in range(sequential_event_to_add_count)
-            ]
-            simultaneous_event.extend(sequential_event_list)
-
-        for sequential_event in simultaneous_event:
-            sequential_event_duration = sequential_event.duration
-            rest_duration = start - sequential_event_duration
-            if rest_duration > 0:
-                sequential_event.append(core_events.SimpleEvent(rest_duration))
-
+        if start > (simultaneous_event_duration := simultaneous_event.duration):
+            # In case our simultaneous event is still empty, 'extend_until'
+            # will do nothing (because it only extends sequential events,
+            # but ignores simultaneous events). Therefore we need to explicitly
+            # add a sequential event before extending.
+            if not simultaneous_event:
+                simultaneous_event.append(core_events.SequentialEvent([]))
+            simultaneous_event.extend_until(start)
+        # We have an overlap
+        elif start < simultaneous_event_duration:
             # TODO(We need to check for overlaps. If we find overlaps:
             #       (a) with prohibit flag
             #       (b) with allow flag
@@ -120,28 +117,12 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
             #           Then: only append to the sequential events without
             #           conflicts.
             # elif rest_duration < 0
+            raise NotImplementedError()
 
-        event_to_append_duration = event_to_append.duration
-
-        for sequential_event_to_append_to, sequential_event_to_append in zip(
-            simultaneous_event, event_to_append
-        ):
-            assert isinstance(
-                sequential_event_to_append, core_events.SequentialEvent
-            ), "Invalid event structure: Expected SequentialEvent"
-            for simple_event_to_append in sequential_event_to_append:
-                assert isinstance(
-                    simple_event_to_append, core_events.SimpleEvent
-                ), "Invalid event structure: Expected SimpleEvent"
-                sequential_event_to_append_to.append(simple_event_to_append)
-
-            duration_difference = (
-                event_to_append_duration - sequential_event_to_append.duration
-            )
-            if duration_difference > 0:
-                sequential_event_to_append_to.append(
-                    core_events.SimpleEvent(duration_difference)
-                )
+        try:
+            simultaneous_event.concatenate_by_tag(event_to_append)
+        except core_utilities.NoTagError:
+            simultaneous_event.concatenate_by_index(event_to_append)
 
     def _add_tagged_event_to_simultaneous_event(
         self,
@@ -161,19 +142,6 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
         elif isinstance(tagged_event, core_events.SequentialEvent):
             tagged_event = core_events.SimultaneousEvent([tagged_event])
         self._append_to_simultaneous_event(start, simultaneous_event, tagged_event)
-
-    def _fill_with_rest_until_duration(
-        self,
-        duration: core_parameters.abc.Duration,
-        tagged_simultaneous_event_iterable: typing.Iterable[
-            core_events.TaggedSimultaneousEvent
-        ],
-    ):
-        for simultaneous_event in tagged_simultaneous_event_iterable:
-            for sequential_event in simultaneous_event:
-                difference = duration - sequential_event.duration
-                if difference > 0:
-                    sequential_event.append(core_events.SimpleEvent(difference))
 
     def convert(
         self, timeline_to_convert: timeline_interfaces.TimeLine
@@ -201,10 +169,10 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
                     tagged_event,
                 )
 
-        if duration is not None:
-            self._fill_with_rest_until_duration(
-                duration, tag_to_tagged_simultaneous_event.values()
-            )
+        duration = duration or max(
+            (e.duration for e in tag_to_tagged_simultaneous_event.values())
+        )
+        [e.extend_until(duration) for e in tag_to_tagged_simultaneous_event.values()]
 
         return core_events.SimultaneousEvent(
             tuple(tag_to_tagged_simultaneous_event.values())
