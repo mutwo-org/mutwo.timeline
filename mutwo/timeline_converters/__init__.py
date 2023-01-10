@@ -127,14 +127,11 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
     def _add_tagged_event_to_simultaneous_event(
         self,
         start: core_parameters.abc.Duration,
-        end: core_parameters.abc.Duration,
         simultaneous_event: core_events.TaggedSimultaneousEvent,
         tagged_event: core_events.TaggedSimpleEvent
         | core_events.TaggedSequentialEvent
         | core_events.TaggedSimultaneousEvent,
     ):
-        event_duration = end - start
-        tagged_event = tagged_event.set("duration", event_duration, mutate=False)
         if isinstance(tagged_event, core_events.SimpleEvent):
             tagged_event = core_events.SimultaneousEvent(
                 [core_events.SequentialEvent([tagged_event])]
@@ -142,6 +139,16 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
         elif isinstance(tagged_event, core_events.SequentialEvent):
             tagged_event = core_events.SimultaneousEvent([tagged_event])
         self._append_to_simultaneous_event(start, simultaneous_event, tagged_event)
+
+    def _event_placement_to_event(
+        self,
+        event_placement: timeline_interfaces.EventPlacement,
+        start: core_parameters.abc.Duration,
+        end: core_parameters.abc.Duration,
+    ) -> core_events.SimultaneousEvent:
+        event_duration = end - start
+        event = event_placement.event.set("duration", event_duration, mutate=False)
+        return event
 
     def convert(
         self, timeline_to_convert: timeline_interfaces.TimeLine
@@ -160,11 +167,12 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
         timeline_to_convert.sort()
         for event_placement in timeline_to_convert.event_placement_tuple:
             start, end = self._event_placement_to_start_and_end(event_placement)
-            for tagged_event in event_placement.event:
+            for tagged_event in self._event_placement_to_event(
+                event_placement, start, end
+            ):
                 tag = tagged_event.tag
                 self._add_tagged_event_to_simultaneous_event(
                     start,
-                    end,
                     tag_to_tagged_simultaneous_event[tag],
                     tagged_event,
                 )
