@@ -10,10 +10,10 @@ independent start and end times in `mutwo`.
 
 from __future__ import annotations
 
-import bisect
 import copy
 import statistics
 import typing
+import warnings
 
 import ranges
 
@@ -74,24 +74,31 @@ class EventPlacement(object):
     #                       private static methods                           #
     # ###################################################################### #
 
-    @staticmethod
     def _unspecified_to_specified_time_or_time_range(
-        unspecified_time_or_time_range: UnspecificTimeOrTimeRange,
+        self, unspecified_time_or_time_range: UnspecificTimeOrTimeRange,
     ) -> TimeOrTimeRange:
         # Ensure we get ranges filled with Duration objects or single
         # duration objects.
         if isinstance(unspecified_time_or_time_range, ranges.Range):
-            return ranges.Range(
-                *tuple(
-                    core_events.configurations.UNKNOWN_OBJECT_TO_DURATION(
-                        unknown_object
-                    )
-                    for unknown_object in (
-                        unspecified_time_or_time_range.start,
-                        unspecified_time_or_time_range.end,
-                    )
+            start, end = tuple(
+                core_events.configurations.UNKNOWN_OBJECT_TO_DURATION(unknown_object)
+                for unknown_object in (
+                    unspecified_time_or_time_range.start,
+                    unspecified_time_or_time_range.end,
                 )
             )
+            try:
+                return ranges.Range(start, end)
+            # This means we catched a rounding error: the difference
+            # between start & end is smaller than the rounding loss
+            # which is caused by
+            # mutwo.core_parameters.configurations.ROUND_DURATION_TO_N_DIGITS.
+            #
+            # Because the difference is so small we can simply return only
+            # one value, because the range doesn't really matter anyway.
+            except ValueError:
+                warnings.warn(timeline_utilities.TooSmallRangeWarning(self, unspecified_time_or_time_range))
+                return start
         else:
             return core_events.configurations.UNKNOWN_OBJECT_TO_DURATION(
                 unspecified_time_or_time_range
@@ -162,7 +169,7 @@ class EventPlacement(object):
     @start_or_start_range.setter
     def start_or_start_range(self, start_or_start_range: UnspecificTimeOrTimeRange):
         self._start_or_start_range = (
-            EventPlacement._unspecified_to_specified_time_or_time_range(
+            self._unspecified_to_specified_time_or_time_range(
                 start_or_start_range
             )
         )
@@ -174,7 +181,7 @@ class EventPlacement(object):
     @end_or_end_range.setter
     def end_or_end_range(self, end_or_end_range: UnspecificTimeOrTimeRange):
         self._end_or_end_range = (
-            EventPlacement._unspecified_to_specified_time_or_time_range(
+            self._unspecified_to_specified_time_or_time_range(
                 end_or_end_range
             )
         )

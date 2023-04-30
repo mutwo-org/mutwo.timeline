@@ -2,6 +2,7 @@ __all__ = (
     "EventPlacementRegisterError",
     "ExceedDurationError",
     "EventPlacementNotFoundError",
+    "TooSmallRangeWarning",
 )
 
 
@@ -28,4 +29,14 @@ class EventPlacementNotFoundError(Exception):
         super().__init__(
             f"Can't find EventPlacement with tag = '{tag}' "
             f"and index = '{index}' in TimeLine!"
+        )
+
+
+class TooSmallRangeWarning(Warning):
+    def __init__(self, event_placement, time_range):
+        super().__init__(
+            f"Found too small difference in time range '{time_range}' of "
+            f"'{event_placement}'. Auto set to only one value. Increase "
+            "'mutwo.core_parameters.configurations.ROUND_DURATION_TO_N_DIGITS'"
+            " if you need higher precision."
         )
