@@ -117,7 +117,7 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
             #           Then: only append to the sequential events without
             #           conflicts.
             # elif rest_duration < 0
-            raise NotImplementedError()
+            raise NotImplementedError("Overlap handler isn't implemented yet!")
 
         try:
             simultaneous_event.concatenate_by_tag(event_to_append)
