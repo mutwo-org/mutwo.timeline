@@ -318,6 +318,14 @@ class TimeLine(object):
     #                          public methods                                #
     # ###################################################################### #
 
+    # FIXME: In 'unregister' we remove the 'EventPlacement' which is equal to
+    # the given input. This means if we have multiple equal 'EventPlacement'
+    # within a timeline, currently this won't remove all of those equal copies.
+    # We may want to add a test here which ensures that no equal 'EventPlacement'
+    # are added to a 'TimeLine'. But this leads to expensive comparison of mutwo
+    # events, which needs to be avoided for performance reasons.
+    # Can we find a way to make this method safer without having such a bad
+    # performance? Test by id?
     def register(self, event_placement: EventPlacement):
         """Register a new :class:`EventPlacement` on given :class:`TimeLine`.
 
