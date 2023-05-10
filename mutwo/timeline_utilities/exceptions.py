@@ -1,3 +1,5 @@
+import typing
+
 __all__ = (
     "EventPlacementRegisterError",
     "ExceedDurationError",
@@ -25,11 +27,22 @@ class ExceedDurationError(EventPlacementRegisterError):
 
 
 class EventPlacementNotFoundError(Exception):
-    def __init__(self, tag: str, index: int):
-        super().__init__(
-            f"Can't find EventPlacement with tag = '{tag}' "
-            f"and index = '{index}' in TimeLine!"
-        )
+    def __init__(
+        self,
+        tag: typing.Optional[str] = None,
+        index: typing.Optional[int] = None,
+        event_placement=None,
+    ):
+        if event_placement:
+            m = f"Can't find EventPlacement '{event_placement}' inside TimeLine!"
+        elif tag is not None:
+            m = (
+                f"Can't find EventPlacement with tag = '{tag}' "
+                f"and index = '{index}' in TimeLine!"
+            )
+        else:
+            raise TypeError("Need to provide either event_placement or tag/index!")
+        super().__init__(m)
 
 
 class TooSmallRangeWarning(Warning):

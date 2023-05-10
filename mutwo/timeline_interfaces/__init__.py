@@ -75,7 +75,8 @@ class EventPlacement(object):
     # ###################################################################### #
 
     def _unspecified_to_specified_time_or_time_range(
-        self, unspecified_time_or_time_range: UnspecificTimeOrTimeRange,
+        self,
+        unspecified_time_or_time_range: UnspecificTimeOrTimeRange,
     ) -> TimeOrTimeRange:
         # Ensure we get ranges filled with Duration objects or single
         # duration objects.
@@ -97,7 +98,11 @@ class EventPlacement(object):
             # Because the difference is so small we can simply return only
             # one value, because the range doesn't really matter anyway.
             except ValueError:
-                warnings.warn(timeline_utilities.TooSmallRangeWarning(self, unspecified_time_or_time_range))
+                warnings.warn(
+                    timeline_utilities.TooSmallRangeWarning(
+                        self, unspecified_time_or_time_range
+                    )
+                )
                 return start
         else:
             return core_events.configurations.UNKNOWN_OBJECT_TO_DURATION(
@@ -168,10 +173,8 @@ class EventPlacement(object):
 
     @start_or_start_range.setter
     def start_or_start_range(self, start_or_start_range: UnspecificTimeOrTimeRange):
-        self._start_or_start_range = (
-            self._unspecified_to_specified_time_or_time_range(
-                start_or_start_range
-            )
+        self._start_or_start_range = self._unspecified_to_specified_time_or_time_range(
+            start_or_start_range
         )
 
     @property
@@ -180,10 +183,8 @@ class EventPlacement(object):
 
     @end_or_end_range.setter
     def end_or_end_range(self, end_or_end_range: UnspecificTimeOrTimeRange):
-        self._end_or_end_range = (
-            self._unspecified_to_specified_time_or_time_range(
-                end_or_end_range
-            )
+        self._end_or_end_range = self._unspecified_to_specified_time_or_time_range(
+            end_or_end_range
         )
 
     @property
@@ -337,6 +338,32 @@ class TimeLine(object):
                 raise timeline_utilities.ExceedDurationError(event_placement, duration)
 
         self._event_placement_list.append(event_placement)
+
+    def unregister(self, event_placement: EventPlacement):
+        """Unregister an :class:`EventPlacement` which is part of :class:`TimeLine`.
+
+        :param event_placement: The :class:`EventPlacement` which should be
+            removed from the :class:`TimeLine`.
+        :type event_placement: EventPlacement
+        :raises EventPlacementNotFoundError: If :class:`EventPlacement` isn't
+            inside :class:`TimeLine`.
+        """
+        # We don't use 'self._event_placement_list.index(event_placement)',
+        # because this results in expensive '__eq__' calls (they are expensive,
+        # because mutwo event comparison is complex).
+        # 'EventPlacement' are mostly complex objects and it's difficult to
+        # reproduce them, so the 'normal' API of this method expects anyway
+        # that we have access to the original 'EventPlacement' (either via
+        # 'get_event_placement' or because we are iteration over
+        # 'event_placement_tuple').
+        ep_id = id(event_placement)
+        for i, ep in enumerate(self.event_placement_tuple):
+            if id(ep) == ep_id:
+                del self._event_placement_list[i]
+                return
+        raise timeline_utilities.EventPlacementNotFoundError(
+            event_placement=event_placement
+        )
 
     @core_utilities.add_copy_option
     def sort(self, mutate: bool = True) -> TimeLine:

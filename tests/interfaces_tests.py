@@ -236,3 +236,18 @@ class TimeLineTest(unittest.TestCase):
             ]
         )
         self.assertEqual(timeline.tag_set, {"abc", "def", "ghi"})
+
+    def test_unregister(self):
+        event_placement = timeline_interfaces.EventPlacement(self.event, 0, 1)
+        self.timeline_dynamic.register(event_placement)
+        self.assertEqual(len(self.timeline_dynamic.event_placement_tuple), 1)
+        self.timeline_dynamic.unregister(event_placement)
+        self.assertEqual(len(self.timeline_dynamic.event_placement_tuple), 0)
+
+    def test_unregister_error(self):
+        event_placement = timeline_interfaces.EventPlacement(self.event, 0, 1)
+        self.assertRaises(
+            timeline_utilities.EventPlacementNotFoundError,
+            self.timeline_dynamic.unregister,
+            event_placement,
+        )
