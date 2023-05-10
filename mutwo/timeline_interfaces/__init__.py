@@ -10,7 +10,10 @@ independent start and end times in `mutwo`.
 
 from __future__ import annotations
 
+import abc
 import copy
+import dataclasses
+import itertools
 import statistics
 import typing
 import warnings
@@ -26,7 +29,15 @@ UnspecificTime: typing.TypeAlias = "core_parameters.abc.Duration | typing.Any"
 UnspecificTimeOrTimeRange: typing.TypeAlias = "UnspecificTime | ranges.Range"
 TimeOrTimeRange: typing.TypeAlias = "core_parameters.abc.Duration | ranges.Range"
 
-__all__ = ("EventPlacement", "TimeLine")
+__all__ = (
+    "EventPlacement",
+    "TimeLine",
+    "Conflict",
+    "ConflictResolutionStrategy",
+    "AlwaysLeftStrategy",
+    "AlternatingStrategy",
+    "TagCountStrategy",
+)
 
 
 class EventPlacement(object):
@@ -251,7 +262,99 @@ class EventPlacement(object):
         )
 
 
-# TODO(Add conflict solution hook to prevent overlaps!)
+@dataclasses.dataclass(frozen=True)
+class Conflict(object):
+    left: EventPlacement
+    right: EventPlacement
+
+
+class ConflictResolutionStrategy(abc.ABC):
+    """Abstract base class for overlapping solving classes.
+
+    You only need to the define the `resolve_conflict` method.
+    """
+
+    # It may look simpler to return the event placements which should be
+    # removed instead of passing the time line. But then we don't allow
+    # other creative ideas of solving overlaps (e.g. adding new gaps between
+    # the overlapping event placements etc.).
+    @abc.abstractmethod
+    def resolve_conflict(self, timeline: TimeLine, conflict: Conflict) -> bool:
+        """Resolve conflict between two overlapping :class:`EventPlacement`.
+
+        :param timeline: The timeline which hosts the conflict. Can be used
+            in order to remove one or both of the conflicting event placements.
+        :type timeline: TimeLine
+        :param conflict: A :class:`Conflict` object which hosts the two
+            overlapping :class:`EventPlacement`.
+        :type conflict: Conflict
+
+        This method should return ``True`` if the class managed to resolve
+        the conflict. If it returns any negative boolean value (e.g. ``None``
+        :mod:`mutwo` assumes that the conflict couldn't be resolved).
+
+        The concrete strategy how the conflict is resolved is up to the
+        resolution strategy class: either the conflicting event placements
+        are removed, or the timeline is adjusted in other ways (e.g. stretched)
+        so that the event placements aren't overlapping anymore.
+        """
+
+
+class AlwaysLeftStrategy(ConflictResolutionStrategy):
+    """Always picks the left :class:`EventPlacement`."""
+
+    def resolve_conflict(self, timeline: TimeLine, conflict: Conflict) -> bool:
+        timeline.unregister(conflict.right)
+        return True
+
+
+class AlternatingStrategy(ConflictResolutionStrategy):
+    """Alterate between the left and the right :class:`EventPlacement`."""
+
+    def __init__(self):
+        self._position_cycle = itertools.cycle(("left", "right"))
+
+    def resolve_conflict(self, timeline: TimeLine, conflict: Conflict) -> bool:
+        timeline.unregister(getattr(conflict, next(self._position_cycle)))
+        return True
+
+
+class TagCountStrategy(ConflictResolutionStrategy):
+    """Pick :class:`EventPlacement` according to tag count.
+
+    :param prefer_more: If set to ``True`` the strategy drops the
+        :class:`EventPlacement` with fewer tags. If set to ``False``
+        it drops the :class:`EventPlacement` with more tags. Default
+        to ``True``.
+    :type prefer_more: bool
+
+    If two :class:`EventPlacement` have an equal amount of tags, this
+    strategy won't be able to solve the conflict.
+    """
+
+    def __init__(self, prefer_more: bool = True):
+        self._prefer_more = prefer_more
+
+    def resolve_conflict(self, timeline: TimeLine, conflict: Conflict) -> bool:
+        tag_count0, tag_count1 = (
+            len(ep.tag_tuple) for ep in (conflict.left, conflict.right)
+        )
+        if tag_count0 == tag_count1:
+            return False
+        elif tag_count0 > tag_count1:
+            sorted_event_placement_tuple = (conflict.right, conflict.left)
+        else:
+            sorted_event_placement_tuple = (conflict.left, conflict.right)
+
+        if not self._prefer_more:
+            sorted_event_placement_tuple = tuple(
+                sorted(sorted_event_placement_tuple, reverse=True)
+            )
+
+        timeline.unregister(sorted_event_placement_tuple[1])
+        return True
+
+
 class TimeLine(object):
     """Timeline to place events on.
 
@@ -397,7 +500,7 @@ class TimeLine(object):
         :param sort: Can be set to ``False`` when sequentially calling
             `get_event_placement` without changing the :class:`TimeLine`.
             When `sort = False`, but the :class:`TimeLine` (or any
-            :class:`EventPlacement` inside the time :class:`TimeLine`
+            :class:`EventPlacement` inside the time :class:`TimeLine`)
             has changed unexpected results may happen. If you want to be
             sure not to break anything, just leave it as ``True``.
             Default to ``True``.
@@ -414,3 +517,86 @@ class TimeLine(object):
             if counter == index:
                 return event_placement
         raise timeline_utilities.EventPlacementNotFoundError(tag, index)
+
+    def resolve_conflicts(
+        self,
+        conflict_resolution_strategy_sequence: typing.Sequence[
+            ConflictResolutionStrategy
+        ] = [AlwaysLeftStrategy()],
+        *,
+        sort: bool = True,
+    ):
+        """Resolve overlapping :class:`EventPlacement` in :class:`TimeLine`.
+
+        :param conflict_resolution_strategy_sequence: Provide the
+            :class:`ConflictResolutionStrategy` you want to use here.
+            If multiple are added, the algorithm initially tries the
+            first one and if this doesn't work it continues with the
+            next strategy. Default to ``[AlwaysLeftStrategy()]``.
+        :type conflict_resolution_strategy_sequence: typing.Sequence[ConflictResolutionStrategy]
+        :param sort: Can be set to ``False`` when sequentially calling
+            `resolve_conflicts` without changing the :class:`TimeLine`.
+            When `sort = False`, but the :class:`TimeLine` (or any
+            :class:`EventPlacement` inside the time :class:`TimeLine`)
+            has changed unexpected results may happen. If you want to be
+            sure not to break anything, just leave it as ``True``.
+            Default to ``True``.
+        :type sort: bool
+        :raises UnresolvedConflict: If none of the provided
+            :class:`ConflictResolutionStrategy` could solve the conflict.
+        """
+        # To allow generators, we cast the sequence to a tuple (we may need
+        # to iterate it multiple times).
+        crst = tuple(conflict_resolution_strategy_sequence)
+        if sort:
+            self.sort()
+        # We can always only solve the first conflict which we encounter
+        # and then we need to start again, because every conflict resolution
+        # could affect all event placements and therefore the looped list
+        # may have changed (some event placement may not even be part of
+        # the time line anymore).
+        while self._resolve_first_conflict(crst):
+            pass
+
+    # ###################################################################### #
+    #                          private methods                               #
+    # ###################################################################### #
+
+    def _resolve_first_conflict(
+        self, conflict_resolution_strategy_tuple: tuple[ConflictResolutionStrategy, ...]
+    ) -> bool:
+        """This methods resolves the first conflict it finds and then stops.
+
+        :return: ``True`` if it found any conflict and resolved it and
+            ``False`` if no conflict was found.
+        """
+
+        for event_placement0, event_placement1 in zip(
+            self.event_placement_tuple, self.event_placement_tuple[1:]
+        ):
+            # Check if both placements share any instruments.
+            share_instruments = False
+            tag_tuple1 = event_placement1.tag_tuple
+            for t in event_placement0.tag_tuple:
+                if t in tag_tuple1:
+                    share_instruments = True
+                    break
+
+            # If they don't share instruments, there is no reason to
+            # proceed further.
+            if not share_instruments:
+                continue
+
+            if event_placement0.is_overlapping(event_placement1):
+                # We got a conflict: The same instruments want to play
+                # at the same time.
+                conflict = Conflict(event_placement0, event_placement1)
+
+                # Try to solve the conflict.
+                for s in conflict_resolution_strategy_tuple:
+                    if s.resolve_conflict(self, conflict):
+                        return True
+
+                raise timeline_utilities.UnresolvedConflict(conflict)
+
+        return False

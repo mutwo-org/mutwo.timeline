@@ -251,3 +251,59 @@ class TimeLineTest(unittest.TestCase):
             self.timeline_dynamic.unregister,
             event_placement,
         )
+
+    def test_resolve_conflicts(self):
+        # First we make a simple test with only two overlapping
+        # event placements. One of them should be removed when we
+        # call 'resolve_conflicts'.
+        event_placement_0 = timeline_interfaces.EventPlacement(self.event, 0, 1)
+        event_placement_1 = timeline_interfaces.EventPlacement(self.event, 0.5, 1.5)
+
+        self.timeline_dynamic.register(event_placement_0)
+        self.timeline_dynamic.register(event_placement_1)
+
+        self.assertEqual(len(self.timeline_dynamic.event_placement_tuple), 2)
+
+        self.timeline_dynamic.resolve_conflicts()
+        self.assertEqual(len(self.timeline_dynamic.event_placement_tuple), 1)
+
+        self.assertTrue(
+            event_placement_0 in self.timeline_dynamic.event_placement_tuple
+        )
+
+    def test_resolve_conflicts_with_different_tags(self):
+        # If we add an event with a different tag, this isn't considered
+        # to be a conflict.
+        event_placement_0 = timeline_interfaces.EventPlacement(self.event, 0, 1)
+        event_placement_1 = timeline_interfaces.EventPlacement(
+            self.event.copy().set_parameter("tag", "different"), 0.5, 1.5
+        )
+
+        self.timeline_dynamic.register(event_placement_0)
+        self.timeline_dynamic.register(event_placement_1)
+
+        self.timeline_dynamic.resolve_conflicts()
+        self.assertEqual(len(self.timeline_dynamic.event_placement_tuple), 2)
+
+    def test_resolve_conflicts_with_sequential_conflicts(self):
+        # Now we try to resolve sequentially appearing conflicts due to
+        # a sequence of more than two overlapping event placements.
+        event_placement_0 = timeline_interfaces.EventPlacement(self.event, 0, 1)
+        event_placement_1 = timeline_interfaces.EventPlacement(self.event, 0.5, 1.5)
+        event_placement_2 = timeline_interfaces.EventPlacement(self.event, 1, 2)
+
+        self.timeline_dynamic.register(event_placement_0)
+        self.timeline_dynamic.register(event_placement_1)
+        self.timeline_dynamic.register(event_placement_2)
+
+        self.assertEqual(len(self.timeline_dynamic.event_placement_tuple), 3)
+
+        self.timeline_dynamic.resolve_conflicts()
+        self.assertEqual(len(self.timeline_dynamic.event_placement_tuple), 2)
+
+        self.assertTrue(
+            event_placement_0 in self.timeline_dynamic.event_placement_tuple
+        )
+        self.assertTrue(
+            event_placement_2 in self.timeline_dynamic.event_placement_tuple
+        )

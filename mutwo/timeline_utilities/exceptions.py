@@ -5,6 +5,7 @@ __all__ = (
     "ExceedDurationError",
     "EventPlacementNotFoundError",
     "TooSmallRangeWarning",
+    "UnresolvedConflict",
 )
 
 
@@ -53,3 +54,8 @@ class TooSmallRangeWarning(Warning):
             "'mutwo.core_parameters.configurations.ROUND_DURATION_TO_N_DIGITS'"
             " if you need higher precision."
         )
+
+
+class UnresolvedConflict(Exception):
+    def __init__(self, conflict):
+        super().__init__(f"Can't resolve conflict '{conflict}'.")
