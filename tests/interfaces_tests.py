@@ -276,7 +276,7 @@ class TimeLineTest(unittest.TestCase):
         # to be a conflict.
         event_placement_0 = timeline_interfaces.EventPlacement(self.event, 0, 1)
         event_placement_1 = timeline_interfaces.EventPlacement(
-            self.event.copy().set_parameter("tag", "different"), 0.5, 1.5
+            self.event.copy().set_parameter("tag", "d"), 0.5, 1.5
         )
 
         self.timeline_dynamic.register(event_placement_0)
@@ -291,6 +291,43 @@ class TimeLineTest(unittest.TestCase):
         event_placement_0 = timeline_interfaces.EventPlacement(self.event, 0, 1)
         event_placement_1 = timeline_interfaces.EventPlacement(self.event, 0.5, 1.5)
         event_placement_2 = timeline_interfaces.EventPlacement(self.event, 1, 2)
+
+        self.timeline_dynamic.register(event_placement_0)
+        self.timeline_dynamic.register(event_placement_1)
+        self.timeline_dynamic.register(event_placement_2)
+
+        self.assertEqual(len(self.timeline_dynamic.event_placement_tuple), 3)
+
+        self.timeline_dynamic.resolve_conflicts()
+        self.assertEqual(len(self.timeline_dynamic.event_placement_tuple), 2)
+
+        self.assertTrue(
+            event_placement_0 in self.timeline_dynamic.event_placement_tuple
+        )
+        self.assertTrue(
+            event_placement_2 in self.timeline_dynamic.event_placement_tuple
+        )
+
+    def test_resolve_conflicts_with_inbetween_event_placement(self):
+        # Here event_placement_0 and event_placement_1 are overlapping / have a
+        # conflict. But on the global timeline, between those two event
+        # placements, there is another event placement which is played by a
+        # different instrument. So the expected result would be that the
+        # algorithm solves the conflict between event_placement_0 and
+        # event_placement_1, but leaves event_placement_2 as it is.
+        #
+        # For passing this test, the conflict resolution algorithm shouldn't
+        # only compare two neighbour event placements (neighbour in terms of
+        # following each other due to sequentially rising start time), but also
+        # event placements further away from each other.
+        #
+        # This invariant wasn't true in the initial implementation of this
+        # algorithm, which is why this test was added.
+        event_placement_0 = timeline_interfaces.EventPlacement(self.event, 0, 1)
+        event_placement_1 = timeline_interfaces.EventPlacement(self.event, 0.5, 1.5)
+        event_placement_2 = timeline_interfaces.EventPlacement(
+            self.event.copy().set_parameter("tag", "d"), 0.3, 0.5
+        )
 
         self.timeline_dynamic.register(event_placement_0)
         self.timeline_dynamic.register(event_placement_1)

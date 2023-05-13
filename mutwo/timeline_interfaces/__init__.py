@@ -571,32 +571,38 @@ class TimeLine(object):
             ``False`` if no conflict was found.
         """
 
-        for event_placement0, event_placement1 in zip(
-            self.event_placement_tuple, self.event_placement_tuple[1:]
-        ):
-            # Check if both placements share any instruments.
-            share_instruments = False
-            tag_tuple1 = event_placement1.tag_tuple
-            for t in event_placement0.tag_tuple:
-                if t in tag_tuple1:
-                    share_instruments = True
+        for i, event_placement0 in enumerate(self.event_placement_tuple):
+            for event_placement1 in self.event_placement_tuple[i + 1 :]:
+                # Check if both placements share any instruments.
+                share_instruments = False
+                tag_tuple1 = event_placement1.tag_tuple
+                for t in event_placement0.tag_tuple:
+                    if t in tag_tuple1:
+                        share_instruments = True
+                        break
+
+                # If they don't share instruments, there is no reason to
+                # proceed further.
+                if not share_instruments:
+                    continue
+
+                if event_placement0.is_overlapping(event_placement1):
+                    # We got a conflict: The same instruments want to play
+                    # at the same time.
+                    conflict = Conflict(event_placement0, event_placement1)
+
+                    # Try to solve the conflict.
+                    for s in conflict_resolution_strategy_tuple:
+                        if s.resolve_conflict(self, conflict):
+                            return True
+
+                    raise timeline_utilities.UnresolvedConflict(conflict)
+
+                # If they aren't overlapping, it means that all following
+                # event placements are much further away from
+                # event_placement_0 and are therefore also not overlapping.
+                # We can stop and save some time :)
+                else:
                     break
-
-            # If they don't share instruments, there is no reason to
-            # proceed further.
-            if not share_instruments:
-                continue
-
-            if event_placement0.is_overlapping(event_placement1):
-                # We got a conflict: The same instruments want to play
-                # at the same time.
-                conflict = Conflict(event_placement0, event_placement1)
-
-                # Try to solve the conflict.
-                for s in conflict_resolution_strategy_tuple:
-                    if s.resolve_conflict(self, conflict):
-                        return True
-
-                raise timeline_utilities.UnresolvedConflict(conflict)
 
         return False
