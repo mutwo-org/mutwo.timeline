@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+
+## [0.4.0] - 2023-05-13
+
+### Added
+- `timeline_interfaces.TimeLine.resolve_conflicts` [to fix overlapping conflicts](https://github.com/mutwo-org/mutwo.timeline/commit/4e0153851cd7a51daa9b3530acfed53b18c422be)
+- `timeline_interfaces.TimeLine.unregister` [to unregister `EventPlacement` from a time line](https://github.com/mutwo-org/mutwo.timeline/commit/17f42450a45baca0115f5f3b2b06ad5e765d31c4)
+
+
 ## [0.3.0] - 2022-11-08
 
 ### Added
