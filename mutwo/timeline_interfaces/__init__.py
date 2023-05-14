@@ -347,11 +347,9 @@ class TagCountStrategy(ConflictResolutionStrategy):
             sorted_event_placement_tuple = (conflict.left, conflict.right)
 
         if not self._prefer_more:
-            sorted_event_placement_tuple = tuple(
-                sorted(sorted_event_placement_tuple, reverse=True)
-            )
+            sorted_event_placement_tuple = tuple(reversed(sorted_event_placement_tuple))
 
-        timeline.unregister(sorted_event_placement_tuple[1])
+        timeline.unregister(sorted_event_placement_tuple[0])
         return True
 
 
