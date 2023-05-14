@@ -344,3 +344,68 @@ class TimeLineTest(unittest.TestCase):
         self.assertTrue(
             event_placement_2 in self.timeline_dynamic.event_placement_tuple
         )
+
+
+class AlwaysLeftStrategyTest(unittest.TestCase):
+    def test(self):
+        tag = "test"
+        event = core_events.SimultaneousEvent(
+            [core_events.TaggedSimpleEvent(1, tag=tag)]
+        )
+        event_placement_0 = timeline_interfaces.EventPlacement(event, 0, 1)
+        event_placement_1 = timeline_interfaces.EventPlacement(event, 0.5, 1.5)
+        timeline = timeline_interfaces.TimeLine()
+        timeline.register(event_placement_0)
+        timeline.register(event_placement_1)
+        self.assertTrue(event_placement_1 in timeline.event_placement_tuple)
+        timeline.resolve_conflicts([timeline_interfaces.AlwaysLeftStrategy()])
+        self.assertTrue(event_placement_0 in timeline.event_placement_tuple)
+        self.assertTrue(event_placement_1 not in timeline.event_placement_tuple)
+
+
+class AlternatingStrategyTest(unittest.TestCase):
+    def test(self):
+        tag = "test"
+        event = core_events.SimultaneousEvent(
+            [core_events.TaggedSimpleEvent(1, tag=tag)]
+        )
+        event_placement_0 = timeline_interfaces.EventPlacement(event, 0, 1)
+        event_placement_1 = timeline_interfaces.EventPlacement(event, 0.5, 1.5)
+        event_placement_2 = timeline_interfaces.EventPlacement(event, 1.25, 2)
+        timeline = timeline_interfaces.TimeLine()
+        timeline.register(event_placement_0)
+        timeline.register(event_placement_1)
+        timeline.register(event_placement_2)
+        timeline.resolve_conflicts([timeline_interfaces.AlternatingStrategy()])
+        self.assertTrue(event_placement_0 not in timeline.event_placement_tuple)
+        self.assertTrue(event_placement_1 in timeline.event_placement_tuple)
+        self.assertTrue(event_placement_2 not in timeline.event_placement_tuple)
+
+
+class TagCountStrategyTest(unittest.TestCase):
+    def test(self):
+        tag0, tag1 = "test0", "test1"
+        event0 = core_events.SimultaneousEvent(
+            [core_events.TaggedSimpleEvent(1, tag=tag0)]
+        )
+        event1 = core_events.SimultaneousEvent(
+            [
+                core_events.TaggedSimpleEvent(1, tag=tag0),
+                core_events.TaggedSimpleEvent(1, tag=tag1),
+            ]
+        )
+        event_placement_0 = timeline_interfaces.EventPlacement(event0, 0, 1)
+        event_placement_1 = timeline_interfaces.EventPlacement(event1, 0.5, 1.5)
+        timeline = timeline_interfaces.TimeLine()
+        timeline.register(event_placement_0)
+        timeline.register(event_placement_1)
+        timeline.resolve_conflicts([timeline_interfaces.TagCountStrategy()])
+        self.assertTrue(event_placement_0 not in timeline.event_placement_tuple)
+        self.assertTrue(event_placement_1 in timeline.event_placement_tuple)
+
+        timeline.register(event_placement_0)
+        timeline.resolve_conflicts(
+            [timeline_interfaces.TagCountStrategy(prefer_more=False)]
+        )
+        self.assertTrue(event_placement_0 in timeline.event_placement_tuple)
+        self.assertTrue(event_placement_1 not in timeline.event_placement_tuple)
