@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `is_conflict` keyword argument to `timeline_interfaces.TimeLine.resolve_conflicts`
+
 
 ## [0.4.0] - 2023-05-13
 

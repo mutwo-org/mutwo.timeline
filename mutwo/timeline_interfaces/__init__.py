@@ -521,6 +521,9 @@ class TimeLine(object):
         conflict_resolution_strategy_sequence: typing.Sequence[
             ConflictResolutionStrategy
         ] = [AlwaysLeftStrategy()],
+        is_conflict: typing.Callable[
+            [EventPlacement, EventPlacement], bool
+        ] = lambda ep0, ep1: bool(set(ep0.tag_tuple).intersection(set(ep1.tag_tuple))),
         *,
         sort: bool = True,
     ):
@@ -532,6 +535,17 @@ class TimeLine(object):
             first one and if this doesn't work it continues with the
             next strategy. Default to ``[AlwaysLeftStrategy()]``.
         :type conflict_resolution_strategy_sequence: typing.Sequence[ConflictResolutionStrategy]
+        :param is_conflict: Function which takes two :class:`EventPlacement`
+            and which returns either `True` if the placements are conflicting
+            and return `False` if not. This function doesn't need to check
+            if two placements are overlapping, this is done seperately and
+            independently. A conflict is created only in case ``is_conflict``
+            returns ``True`` and the placements are overlapping. By default
+            this function simply checks if the event placements share any
+            common tag. The logic behind this is the assumption that tag
+            equals instruments and that an instrument can't play two
+            different event placements at the same time.
+        :type is_conflict: typing.Callable[[EventPlacement, EventPlacement], bool]
         :param sort: Can be set to ``False`` when sequentially calling
             `resolve_conflicts` without changing the :class:`TimeLine`.
             When `sort = False`, but the :class:`TimeLine` (or any
@@ -553,7 +567,7 @@ class TimeLine(object):
         # could affect all event placements and therefore the looped list
         # may have changed (some event placement may not even be part of
         # the time line anymore).
-        while self._resolve_first_conflict(crst):
+        while self._resolve_first_conflict(crst, is_conflict):
             pass
 
     # ###################################################################### #
@@ -561,7 +575,9 @@ class TimeLine(object):
     # ###################################################################### #
 
     def _resolve_first_conflict(
-        self, conflict_resolution_strategy_tuple: tuple[ConflictResolutionStrategy, ...]
+        self,
+        conflict_resolution_strategy_tuple: tuple[ConflictResolutionStrategy, ...],
+        is_conflict: typing.Callable[[EventPlacement, EventPlacement], bool],
     ) -> bool:
         """This methods resolves the first conflict it finds and then stops.
 
@@ -571,17 +587,7 @@ class TimeLine(object):
 
         for i, event_placement0 in enumerate(self.event_placement_tuple):
             for event_placement1 in self.event_placement_tuple[i + 1 :]:
-                # Check if both placements share any instruments.
-                share_instruments = False
-                tag_tuple1 = event_placement1.tag_tuple
-                for t in event_placement0.tag_tuple:
-                    if t in tag_tuple1:
-                        share_instruments = True
-                        break
-
-                # If they don't share instruments, there is no reason to
-                # proceed further.
-                if not share_instruments:
+                if not is_conflict(event_placement0, event_placement1):
                     continue
 
                 if event_placement0.is_overlapping(event_placement1):
