@@ -145,10 +145,12 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
         event_placement: timeline_interfaces.EventPlacement,
         start: core_parameters.abc.Duration,
         end: core_parameters.abc.Duration,
-    ) -> core_events.SimultaneousEvent:
+    ) -> typing.Optional[core_events.SimultaneousEvent]:
         event_duration = end - start
-        event = event_placement.event.set("duration", event_duration, mutate=False)
-        return event
+        try:
+            return event_placement.event.set("duration", event_duration, mutate=False)
+        except core_utilities.CannotSetDurationOfEmptyComplexEvent:
+            return None
 
     def convert(
         self, timeline_to_convert: timeline_interfaces.TimeLine
@@ -167,9 +169,13 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
         timeline_to_convert.sort()
         for event_placement in timeline_to_convert.event_placement_tuple:
             start, end = self._event_placement_to_start_and_end(event_placement)
-            for tagged_event in self._event_placement_to_event(
-                event_placement, start, end
+            # If the event of our event placement doesn't have any children,
+            # this is `None` and we just need to ignore it.
+            if not (
+                event := self._event_placement_to_event(event_placement, start, end)
             ):
+                continue
+            for tagged_event in event:
                 tag = tagged_event.tag
                 self._add_tagged_event_to_simultaneous_event(
                     start,
