@@ -160,10 +160,10 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
         ]
     ]:
         duration = timeline_to_convert.duration
-        tag_set = timeline_to_convert.tag_set
+        tag_tuple = tuple(sorted(timeline_to_convert.tag_set))
 
         tag_to_tagged_simultaneous_event = {
-            tag: core_events.TaggedSimultaneousEvent([], tag=tag) for tag in tag_set
+            tag: core_events.TaggedSimultaneousEvent([], tag=tag) for tag in tag_tuple
         }
 
         timeline_to_convert.sort()

@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - `is_conflict` keyword argument to `timeline_interfaces.TimeLine.resolve_conflicts`
 
+### Changed
+- Order of 'TaggedSimultaneousEvent' in 'SimultaneousEvent' returned by 'TimeLineToSimultaneousEvent' is always the same now.
+
 
 ## [0.4.0] - 2023-05-13
 
