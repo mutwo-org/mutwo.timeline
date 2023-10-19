@@ -33,7 +33,7 @@ setuptools.setup(
     ],
     setup_requires=[],
     install_requires=[
-        "mutwo.core>=1.2.1, <2.0.0",
+        "mutwo.core>=1.3.0, <2.0.0",
         "python-ranges>=1.2.0, <2.0.0",
         "numpy>=1.18, <2.00",
     ],

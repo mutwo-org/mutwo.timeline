@@ -6,7 +6,6 @@ import dataclasses
 import itertools
 import statistics
 import typing
-import warnings
 
 import ranges
 
@@ -70,6 +69,7 @@ class EventPlacement(object):
         self.start_or_start_range = start_or_start_range
         self.end_or_end_range = end_or_end_range
         self.event = event
+        self._logger = core_utilities.get_cls_logger(type(self))
 
     # ###################################################################### #
     #                       private static methods                           #
@@ -99,7 +99,7 @@ class EventPlacement(object):
             # Because the difference is so small we can simply return only
             # one value, because the range doesn't really matter anyway.
             except ValueError:
-                warnings.warn(
+                self._logger.warning(
                     timeline_utilities.TooSmallRangeWarning(
                         self, unspecified_time_or_time_range
                     )
