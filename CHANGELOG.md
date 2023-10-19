@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+
+## [0.5.0] - 2023-10-19
+
 ### Added
-- `is_conflict` keyword argument to `timeline_interfaces.TimeLine.resolve_conflicts`
+- `is_conflict` keyword argument to `timeline_interfaces.TimeLine.resolve_conflicts`, see [here](https://github.com/mutwo-org/mutwo.timeline/commit/0e8fd2e7dba170c60803c1b01d6b6ccab02471f3)
 
 ### Changed
-- Order of 'TaggedSimultaneousEvent' in 'SimultaneousEvent' returned by 'TimeLineToSimultaneousEvent' is always the same now.
+- Order of 'TaggedSimultaneousEvent' in 'SimultaneousEvent' returned by 'TimeLineToSimultaneousEvent' is always the same now, see [here](https://github.com/mutwo-org/mutwo.timeline/commit/8931903a76aac5d0e46bca061478f69ed65c3442)
+
+### Fixed
+- `TimeLine.resolve_conflicts`: Fix for inbetween event, see [here](https://github.com/mutwo-org/mutwo.timeline/commit/9d067cb475554b74ffdfe83c4017eeebd40a999d)
+- `TagCountStrategy`: it returns results in correct order now, see [here](https://github.com/mutwo-org/mutwo.timeline/commit/19481e89a4cdd284ff1e8d59cf59543f369c2908)
+- `TimeLineToSimultaneousEvent`: Fix conversion of empty `EventPlacement`, see [here](https://github.com/mutwo-org/mutwo.timeline/commit/026b83c9be16cf54d2cc64623ceb19890da11686)
 
 
 ## [0.4.0] - 2023-05-13
