@@ -1,7 +1,11 @@
 import unittest
 
 import ranges
-import quicktions as fractions
+
+try:
+    import quicktions as fractions
+except ImportError:
+    import fractions
 
 from mutwo import core_events
 from mutwo import timeline_converters
