@@ -466,7 +466,7 @@ class TimeLine(object):
 
     @core_utilities.add_copy_option
     def sort(self, mutate: bool = True) -> TimeLine:
-        """Sort :class:`EventPlacement`s by start time (and if equal by end time)."""
+        """Sort all :class:`EventPlacement` by start time (and if equal by end time)."""
 
         self._event_placement_list.sort(
             key=lambda event_placement: (
