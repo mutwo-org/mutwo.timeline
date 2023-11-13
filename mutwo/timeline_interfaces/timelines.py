@@ -254,6 +254,18 @@ class EventPlacement(object):
 
 @dataclasses.dataclass(frozen=True)
 class Conflict(object):
+    """A conflict represents two overlapping :class:`EventPlacement`
+
+    :param left: The earlier :class:`EventPlacement`.
+    :type left: EventPlacement
+    :param right: The later :class:`EventPlacement`.
+    :type right: EventPlacement
+
+    Two overlapping :class:`EventPlacement` are mostly only a problem
+    if their instruments are the same. Nevertheless the precision definition
+    of a :class:`Conflict` depends on the callable passed to the 'is_conflict'
+    parameter of the :func:`TimeLine.resolve_conflicts` method.
+    """
     left: EventPlacement
     right: EventPlacement
 
