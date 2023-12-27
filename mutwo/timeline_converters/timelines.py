@@ -1,6 +1,6 @@
+import random
 import typing
 
-import numpy as np
 import ranges
 
 from mutwo import core_converters
@@ -70,7 +70,7 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
     """
 
     def __init__(self, random_seed: int = 100):
-        self._random = np.random.default_rng(random_seed)
+        self._random = random.Random(random_seed)
 
     def _time_or_time_range_to_time(
         self, time_or_time_range: ranges.Range | core_parameters.abc.Duration
