@@ -262,7 +262,7 @@ class Conflict(object):
     :type right: EventPlacement
 
     Two overlapping :class:`EventPlacement` are mostly only a problem
-    if their instruments are the same. Nevertheless the precision definition
+    if their instruments are the same. Nevertheless the precise definition
     of a :class:`Conflict` depends on the callable passed to the 'is_conflict'
     parameter of the :func:`TimeLine.resolve_conflicts` method.
     """
