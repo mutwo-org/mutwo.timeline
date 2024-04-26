@@ -11,7 +11,7 @@ from mutwo import timeline_interfaces
 
 __all__ = (
     "TimeLineToEventPlacementDict",
-    "TimeLineToSimultaneousEvent",
+    "TimeLineToConcurrence",
     "TimeLineToEventPlacementTuple",
     "EventPlacementTupleToGaplessEventPlacementTuple",
     "EventPlacementTupleToSplitEventPlacementDict",
@@ -36,13 +36,13 @@ class TimeLineToEventPlacementDict(core_converters.abc.Converter):
         }
 
 
-class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
-    """Create event with SimultaneousEvent for each tag.
+class TimeLineToConcurrence(core_converters.abc.Converter):
+    """Create event with Concurrence for each tag.
 
     :param random_seed: Seed for random operation in case
         `start_or_start_range` or `end_or_end_range` of an
         :class:`mutwo.timeline_interfaces.EventPlacement` is a
-        `ranges.Range` and :class:`TimeLineToSimultaneousEvent`
+        `ranges.Range` and :class:`TimeLineToConcurrence`
         needs to pick a value within the given range.
     :type random_seed: int
 
@@ -57,9 +57,9 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
     converted need a specific structure: the deepest nested
     structure they can follow is:
 
-        core_events.SimultaneousEvent[
-            core_events.SequentialEvent[
-                core_events.SimpleEvent
+        core_events.Concurrence[
+            core_events.Consecution[
+                core_events.Chronon
             ]
         ]
 
@@ -94,18 +94,18 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
     def _append_to_simultaneous_event(
         self,
         start: core_parameters.abc.Duration,
-        simultaneous_event: core_events.TaggedSimultaneousEvent,
-        event_to_append: core_events.SimultaneousEvent[
-            core_events.SequentialEvent[core_events.SimpleEvent]
+        simultaneous_event: core_events.Concurrence,
+        event_to_append: core_events.Concurrence[
+            core_events.Consecution[core_events.Chronon]
         ],
     ):
         if start > (simultaneous_event_duration := simultaneous_event.duration):
-            # In case our simultaneous event is still empty, 'extend_until'
-            # will do nothing (because it only extends sequential events,
-            # but ignores simultaneous events). Therefore we need to explicitly
-            # add a sequential event before extending.
+            # In case our concurrence is still empty, 'extend_until'
+            # will do nothing (because it only extends consecutions,
+            # but ignores concurrences). Therefore we need to explicitly
+            # add a consecution before extending.
             if not simultaneous_event:
-                simultaneous_event.append(core_events.SequentialEvent([]))
+                simultaneous_event.append(core_events.Consecution([]))
             simultaneous_event.extend_until(start)
         # We have an overlap
         elif start < simultaneous_event_duration:
@@ -114,11 +114,11 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
             #       (b) with allow flag
             #
             #       (a) raise Exception
-            #       (b) check for all other SequentialEvents,
+            #       (b) check for all other Consecutions,
             #           how many are they where we don't have
             #           any conflicts? Where are they? (save in list)
-            #           If there aren't enough, add new sequential events.
-            #           Then: only append to the sequential events without
+            #           If there aren't enough, add new consecutions.
+            #           Then: only append to the consecutions without
             #           conflicts.
             # elif rest_duration < 0
             raise NotImplementedError("Overlap handler isn't implemented yet!")
@@ -131,17 +131,17 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
     def _add_tagged_event_to_simultaneous_event(
         self,
         start: core_parameters.abc.Duration,
-        simultaneous_event: core_events.TaggedSimultaneousEvent,
-        tagged_event: core_events.TaggedSimpleEvent
-        | core_events.TaggedSequentialEvent
-        | core_events.TaggedSimultaneousEvent,
+        simultaneous_event: core_events.Concurrence,
+        tagged_event: core_events.Chronon
+        | core_events.Consecution
+        | core_events.Concurrence,
     ):
-        if isinstance(tagged_event, core_events.SimpleEvent):
-            tagged_event = core_events.SimultaneousEvent(
-                [core_events.SequentialEvent([tagged_event])]
+        if isinstance(tagged_event, core_events.Chronon):
+            tagged_event = core_events.Concurrence(
+                [core_events.Consecution([tagged_event])]
             )
-        elif isinstance(tagged_event, core_events.SequentialEvent):
-            tagged_event = core_events.SimultaneousEvent([tagged_event])
+        elif isinstance(tagged_event, core_events.Consecution):
+            tagged_event = core_events.Concurrence([tagged_event])
         self._append_to_simultaneous_event(start, simultaneous_event, tagged_event)
 
     def _event_placement_to_event(
@@ -149,25 +149,25 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
         event_placement: timeline_interfaces.EventPlacement,
         start: core_parameters.abc.Duration,
         end: core_parameters.abc.Duration,
-    ) -> typing.Optional[core_events.SimultaneousEvent]:
+    ) -> typing.Optional[core_events.Concurrence]:
         event_duration = end - start
         try:
-            return event_placement.event.set("duration", event_duration, mutate=False)
-        except core_utilities.CannotSetDurationOfEmptyComplexEvent:
+            return event_placement.event.copy().set("duration", event_duration)
+        except core_utilities.CannotSetDurationOfEmptyCompound:
             return None
 
     def convert(
         self, timeline_to_convert: timeline_interfaces.TimeLine
-    ) -> core_events.SimultaneousEvent[
-        core_events.TaggedSimultaneousEvent[
-            core_events.SequentialEvent[core_events.SimpleEvent]
+    ) -> core_events.Concurrence[
+        core_events.Concurrence[
+            core_events.Consecution[core_events.Chronon]
         ]
     ]:
         duration = timeline_to_convert.duration
         tag_tuple = tuple(sorted(timeline_to_convert.tag_set))
 
         tag_to_tagged_simultaneous_event = {
-            tag: core_events.TaggedSimultaneousEvent([], tag=tag) for tag in tag_tuple
+            tag: core_events.Concurrence([], tag=tag) for tag in tag_tuple
         }
 
         timeline_to_convert.sort()
@@ -192,7 +192,7 @@ class TimeLineToSimultaneousEvent(core_converters.abc.Converter):
         )
         [e.extend_until(duration) for e in tag_to_tagged_simultaneous_event.values()]
 
-        return core_events.SimultaneousEvent(
+        return core_events.Concurrence(
             tuple(tag_to_tagged_simultaneous_event.values())
         )
 
@@ -248,7 +248,7 @@ class EventPlacementTupleToSplitEventPlacementDict(core_converters.abc.Converter
                         {event.tag: event_placement_list}
                     )
                 new_event_placement = event_placement.copy()
-                new_event_placement.event = core_events.SimultaneousEvent(
+                new_event_placement.event = core_events.Concurrence(
                     [new_event_placement.event[event_index]]
                 )
                 event_placement_list.append(new_event_placement)
@@ -273,8 +273,8 @@ class EventPlacementTupleToGaplessEventPlacementTuple(core_converters.abc.Conver
         ):
             new_event_placement_list.append(
                 timeline_interfaces.EventPlacement(
-                    core_events.SimultaneousEvent(
-                        [core_events.TaggedSimpleEvent(0, tag=tag)]
+                    core_events.Concurrence(
+                        [core_events.Chronon(0, tag=tag)]
                     ),
                     start,
                     end,

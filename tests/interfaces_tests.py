@@ -11,12 +11,12 @@ from mutwo import timeline_utilities
 class EventPlacementTest(unittest.TestCase):
     def setUp(self):
         self.event_placement_with_start_and_end = timeline_interfaces.EventPlacement(
-            core_events.SimultaneousEvent([core_events.TaggedSimpleEvent(1)]), 0, 1
+            core_events.Concurrence([core_events.Chronon(1)]), 0, 1
         )
 
         self.event_placement_with_start_range_and_end_range = (
             timeline_interfaces.EventPlacement(
-                core_events.SimultaneousEvent([core_events.TaggedSimpleEvent(1)]),
+                core_events.Concurrence([core_events.Chronon(1)]),
                 ranges.Range(0, 0.5),
                 ranges.Range(1, 1.5),
             )
@@ -77,8 +77,8 @@ class EventPlacementTest(unittest.TestCase):
         )
 
     def test_is_overlapping(self):
-        event = core_events.SimultaneousEvent(
-            [core_events.TaggedSimpleEvent(1, tag="test")]
+        event = core_events.Concurrence(
+            [core_events.Chronon(1, tag="test")]
         )
         event_placement0 = timeline_interfaces.EventPlacement(event, 1, 2)
         event_placement1 = timeline_interfaces.EventPlacement(event, 0, 3)
@@ -108,14 +108,14 @@ class EventPlacementTest(unittest.TestCase):
 
     def test_move_by(self):
         self.assertEqual(
-            self.event_placement_with_start_and_end.move_by(1, mutate=False),
+            self.event_placement_with_start_and_end.copy().move_by(1),
             timeline_interfaces.EventPlacement(
                 self.event_placement_with_start_and_end.event, 1, 2
             ),
         )
         self.assertEqual(
-            self.event_placement_with_start_range_and_end_range.move_by(
-                1, mutate=False
+            self.event_placement_with_start_range_and_end_range.copy().move_by(
+                1
             ),
             timeline_interfaces.EventPlacement(
                 self.event_placement_with_start_and_end.event,
@@ -151,8 +151,8 @@ class TimeLineTest(unittest.TestCase):
     def setUp(self):
         self.tag = "test"
         self.static_duration = core_parameters.DirectDuration(10)
-        self.event = core_events.SimultaneousEvent(
-            [core_events.TaggedSimpleEvent(1, tag=self.tag)]
+        self.event = core_events.Concurrence(
+            [core_events.Chronon(1, tag=self.tag)]
         )
         self.timeline_dynamic = timeline_interfaces.TimeLine(duration=None)
         self.timeline_static = timeline_interfaces.TimeLine(
@@ -215,19 +215,19 @@ class TimeLineTest(unittest.TestCase):
         timeline = timeline_interfaces.TimeLine(
             [
                 timeline_interfaces.EventPlacement(
-                    core_events.SimultaneousEvent(
+                    core_events.Concurrence(
                         [
-                            core_events.TaggedSimpleEvent(1, tag="abc"),
-                            core_events.TaggedSimpleEvent(1, tag="def"),
+                            core_events.Chronon(1, tag="abc"),
+                            core_events.Chronon(1, tag="def"),
                         ]
                     ),
                     0,
                     1,
                 ),
                 timeline_interfaces.EventPlacement(
-                    core_events.SimultaneousEvent(
+                    core_events.Concurrence(
                         [
-                            core_events.TaggedSimpleEvent(1, tag="ghi"),
+                            core_events.Chronon(1, tag="ghi"),
                         ]
                     ),
                     10,
@@ -349,8 +349,8 @@ class TimeLineTest(unittest.TestCase):
 class AlwaysLeftStrategyTest(unittest.TestCase):
     def test(self):
         tag = "test"
-        event = core_events.SimultaneousEvent(
-            [core_events.TaggedSimpleEvent(1, tag=tag)]
+        event = core_events.Concurrence(
+            [core_events.Chronon(1, tag=tag)]
         )
         event_placement_0 = timeline_interfaces.EventPlacement(event, 0, 1)
         event_placement_1 = timeline_interfaces.EventPlacement(event, 0.5, 1.5)
@@ -366,8 +366,8 @@ class AlwaysLeftStrategyTest(unittest.TestCase):
 class AlternatingStrategyTest(unittest.TestCase):
     def test(self):
         tag = "test"
-        event = core_events.SimultaneousEvent(
-            [core_events.TaggedSimpleEvent(1, tag=tag)]
+        event = core_events.Concurrence(
+            [core_events.Chronon(1, tag=tag)]
         )
         event_placement_0 = timeline_interfaces.EventPlacement(event, 0, 1)
         event_placement_1 = timeline_interfaces.EventPlacement(event, 0.5, 1.5)
@@ -385,13 +385,13 @@ class AlternatingStrategyTest(unittest.TestCase):
 class TagCountStrategyTest(unittest.TestCase):
     def test(self):
         tag0, tag1 = "test0", "test1"
-        event0 = core_events.SimultaneousEvent(
-            [core_events.TaggedSimpleEvent(1, tag=tag0)]
+        event0 = core_events.Concurrence(
+            [core_events.Chronon(1, tag=tag0)]
         )
-        event1 = core_events.SimultaneousEvent(
+        event1 = core_events.Concurrence(
             [
-                core_events.TaggedSimpleEvent(1, tag=tag0),
-                core_events.TaggedSimpleEvent(1, tag=tag1),
+                core_events.Chronon(1, tag=tag0),
+                core_events.Chronon(1, tag=tag1),
             ]
         )
         event_placement_0 = timeline_interfaces.EventPlacement(event0, 0, 1)

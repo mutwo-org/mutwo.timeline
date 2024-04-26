@@ -14,7 +14,7 @@ from mutwo import core_parameters
 from mutwo import core_utilities
 from mutwo import timeline_utilities
 
-UnspecificTime: typing.TypeAlias = "core_parameters.abc.Duration | typing.Any"
+UnspecificTime: typing.TypeAlias = core_parameters.abc.Duration.Type
 UnspecificTimeOrTimeRange: typing.TypeAlias = "UnspecificTime | ranges.Range"
 TimeOrTimeRange: typing.TypeAlias = "core_parameters.abc.Duration | ranges.Range"
 
@@ -29,7 +29,7 @@ __all__ = (
 )
 
 
-class EventPlacement(object):
+class EventPlacement(core_utilities.MutwoObject):
     """Place any event at specific start and end times.
 
     :param event: The event to be placed on a :class:`TimeLine`.
@@ -38,7 +38,7 @@ class EventPlacement(object):
         player) The tag is necessary to concatenate two events on a
         `TimeLine` which belong to the same object (e.g. same instrument
         or same player).
-    :type event: core_events.SimultaneousEvent[core_events.TaggedSimpleEvent | core_events.TaggedSequentialEvent | core_events.SimultaneousEvent]
+    :type event: core_events.Concurrence[core_events.Chronon | core_events.Consecution | core_events.Concurrence]
     :param start_or_start_range: Sets when the event starts. This can
         be a single :class:`mutwo.core_parameters.abc.Duration` or a
         :class:`ranges.Range` of two durations. In the second case
@@ -58,10 +58,10 @@ class EventPlacement(object):
 
     def __init__(
         self,
-        event: core_events.SimultaneousEvent[
-            core_events.TaggedSimpleEvent
-            | core_events.TaggedSequentialEvent
-            | core_events.SimultaneousEvent
+        event: core_events.Concurrence[
+            core_events.Chronon
+            | core_events.Consecution
+            | core_events.Concurrence
         ],
         start_or_start_range: UnspecificTimeOrTimeRange,
         end_or_end_range: UnspecificTimeOrTimeRange,
@@ -83,7 +83,7 @@ class EventPlacement(object):
         # duration objects.
         if isinstance(unspecified_time_or_time_range, ranges.Range):
             start, end = tuple(
-                core_events.configurations.UNKNOWN_OBJECT_TO_DURATION(unknown_object)
+                core_parameters.abc.Duration.from_any(unknown_object)
                 for unknown_object in (
                     unspecified_time_or_time_range.start,
                     unspecified_time_or_time_range.end,
@@ -106,7 +106,7 @@ class EventPlacement(object):
                 )
                 return start
         else:
-            return core_events.configurations.UNKNOWN_OBJECT_TO_DURATION(
+            return core_parameters.abc.Duration.from_any(
                 unspecified_time_or_time_range
             )
 
@@ -117,7 +117,7 @@ class EventPlacement(object):
         if isinstance(time_or_time_range, ranges.Range):
             return core_parameters.DirectDuration(
                 statistics.mean(
-                    (time_or_time_range.start.duration, time_or_time_range.end.duration)
+                    (time_or_time_range.start.beat_count, time_or_time_range.end.beat_count)
                 )
             )
         else:
@@ -235,9 +235,8 @@ class EventPlacement(object):
     def is_overlapping(self, other: EventPlacement) -> bool:
         return not self.time_range.isdisjoint(other.time_range)
 
-    @core_utilities.add_copy_option
     def move_by(self, duration: UnspecificTime) -> EventPlacement:
-        duration = core_events.configurations.UNKNOWN_OBJECT_TO_DURATION(duration)
+        duration = core_parameters.abc.Duration.from_any(duration)
         self.start_or_start_range, self.end_or_end_range = (
             EventPlacement._move_time_or_time_range(time_or_time_range, duration)
             for time_or_time_range in (self.start_or_start_range, self.end_or_end_range)
@@ -253,7 +252,7 @@ class EventPlacement(object):
 
 
 @dataclasses.dataclass(frozen=True)
-class Conflict(object):
+class Conflict(core_utilities.MutwoObject):
     """A conflict represents two overlapping :class:`EventPlacement`
 
     :param left: The earlier :class:`EventPlacement`.
@@ -266,6 +265,7 @@ class Conflict(object):
     of a :class:`Conflict` depends on the callable passed to the 'is_conflict'
     parameter of the :func:`TimeLine.resolve_conflicts` method.
     """
+
     left: EventPlacement
     right: EventPlacement
 
@@ -355,7 +355,7 @@ class TagCountStrategy(ConflictResolutionStrategy):
         return True
 
 
-class TimeLine(object):
+class TimeLine(core_utilities.MutwoObject):
     """Timeline to place events on.
 
     :param duration: If this is set to `None` the ``duration``
@@ -378,7 +378,6 @@ class TimeLine(object):
         event_placement_sequence: typing.Sequence[EventPlacement] = [],
         duration: typing.Optional[UnspecificTime] = None,
     ):
-
         self._dynamic_duration = duration is None
         self._duration = duration
         self._event_placement_list: list[EventPlacement] = list(
@@ -465,7 +464,7 @@ class TimeLine(object):
         # 'EventPlacement' are mostly complex objects and it's difficult to
         # reproduce them, so the 'normal' API of this method expects anyway
         # that we have access to the original 'EventPlacement' (either via
-        # 'get_event_placement' or because we are iteration over
+        # 'get_event_placement' or because we are iterating over
         # 'event_placement_tuple').
         ep_id = id(event_placement)
         for i, ep in enumerate(self.event_placement_tuple):
@@ -476,8 +475,7 @@ class TimeLine(object):
             event_placement=event_placement
         )
 
-    @core_utilities.add_copy_option
-    def sort(self, mutate: bool = True) -> TimeLine:
+    def sort(self) -> TimeLine:
         """Sort all :class:`EventPlacement` by start time (and if equal by end time)."""
 
         self._event_placement_list.sort(

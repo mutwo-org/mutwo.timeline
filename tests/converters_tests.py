@@ -2,11 +2,6 @@ import unittest
 
 import ranges
 
-try:
-    import quicktions as fractions
-except ImportError:
-    import fractions
-
 from mutwo import core_events
 from mutwo import timeline_converters
 from mutwo import timeline_interfaces
@@ -16,11 +11,11 @@ class TimeLineToEventPlacementDictTest(unittest.TestCase):
     def setUp(self):
         self.tag0, self.tag1 = "ab"
         self.event0, self.event1 = (
-            core_events.TaggedSimpleEvent(1, tag=tag) for tag in (self.tag0, self.tag1)
+            core_events.Chronon(1, tag=tag) for tag in (self.tag0, self.tag1)
         )
-        self.simultaneous_event_0 = core_events.SimultaneousEvent([self.event0])
-        self.simultaneous_event_1 = core_events.SimultaneousEvent([self.event1])
-        self.simultaneous_event_01 = core_events.SimultaneousEvent(
+        self.simultaneous_event_0 = core_events.Concurrence([self.event0])
+        self.simultaneous_event_1 = core_events.Concurrence([self.event1])
+        self.simultaneous_event_01 = core_events.Concurrence(
             [self.event0, self.event1]
         )
         self.event_placement_list = [
@@ -51,20 +46,20 @@ class TimeLineToEventPlacementDictTest(unittest.TestCase):
         )
 
 
-class TimeLineToSimultaneousEventTest(unittest.TestCase):
+class TimeLineToConcurrenceTest(unittest.TestCase):
     def setUp(self):
         self.timeline_to_simultaneous_event = (
-            timeline_converters.TimeLineToSimultaneousEvent()
+            timeline_converters.TimeLineToConcurrence()
         )
-        self.simple_event_a = core_events.TaggedSimpleEvent(1, tag="a")
-        self.simple_event_b = core_events.TaggedSimpleEvent(1, tag="b")
-        self.simultaneous_event_a = core_events.TaggedSimultaneousEvent(
+        self.chronon_a = core_events.Chronon(1, tag="a")
+        self.chronon_b = core_events.Chronon(1, tag="b")
+        self.simultaneous_event_a = core_events.Concurrence(
             [
-                core_events.SequentialEvent(
-                    [self.simple_event_a.copy(), self.simple_event_a.copy()]
+                core_events.Consecution(
+                    [self.chronon_a.copy(), self.chronon_a.copy()]
                 ),
-                core_events.SequentialEvent(
-                    [self.simple_event_a.copy(), self.simple_event_a.copy()]
+                core_events.Consecution(
+                    [self.chronon_a.copy(), self.chronon_a.copy()]
                 ),
             ],
             tag="a",
@@ -72,18 +67,18 @@ class TimeLineToSimultaneousEventTest(unittest.TestCase):
         self.timeline = timeline_interfaces.TimeLine(
             [
                 timeline_interfaces.EventPlacement(
-                    core_events.SimultaneousEvent([self.simple_event_a]), 0, 1
+                    core_events.Concurrence([self.chronon_a]), 0, 1
                 ),
                 timeline_interfaces.EventPlacement(
-                    core_events.SimultaneousEvent([self.simple_event_a]), 2, 3
+                    core_events.Concurrence([self.chronon_a]), 2, 3
                 ),
                 timeline_interfaces.EventPlacement(
-                    core_events.SimultaneousEvent([self.simple_event_b]),
+                    core_events.Concurrence([self.chronon_b]),
                     1,
                     ranges.Range(4, 6),
                 ),
                 timeline_interfaces.EventPlacement(
-                    core_events.SimultaneousEvent([self.simultaneous_event_a]), 9, 11
+                    core_events.Concurrence([self.simultaneous_event_a]), 9, 11
                 ),
             ]
         )
@@ -92,8 +87,8 @@ class TimeLineToSimultaneousEventTest(unittest.TestCase):
         simultaneous_event = self.timeline_to_simultaneous_event.convert(self.timeline)
 
         self.assertEqual(len(simultaneous_event), 2)
-        self.assertTrue(simultaneous_event[0].tag, self.simple_event_a.tag)
-        self.assertTrue(simultaneous_event[1].tag, self.simple_event_b.tag)
+        self.assertTrue(simultaneous_event[0].tag, self.chronon_a.tag)
+        self.assertTrue(simultaneous_event[1].tag, self.chronon_b.tag)
         self.assertEqual(len(simultaneous_event[0]), 2)
         self.assertEqual(len(simultaneous_event[0][0]), 6)
         self.assertEqual(len(simultaneous_event[0][1]), 3)
@@ -105,20 +100,20 @@ class TimeLineToEventPlacementTupleTest(unittest.TestCase):
     def setUp(self):
         self.tag0, self.tag1 = "ab"
         self.event0, self.event1 = (
-            core_events.TaggedSimultaneousEvent(
-                [core_events.SequentialEvent([core_events.SimpleEvent(1)])], tag=tag
+            core_events.Concurrence(
+                [core_events.Consecution([core_events.Chronon(1)])], tag=tag
             )
             for tag in (self.tag0, self.tag1)
         )
         self.event_placement_list = [
             timeline_interfaces.EventPlacement(
-                core_events.SimultaneousEvent([self.event1]), 0, 4
+                core_events.Concurrence([self.event1]), 0, 4
             ),
             timeline_interfaces.EventPlacement(
-                core_events.SimultaneousEvent([self.event0]), 1, 3
+                core_events.Concurrence([self.event0]), 1, 3
             ),
             timeline_interfaces.EventPlacement(
-                core_events.SimultaneousEvent([self.event0, self.event1]), 5, 7
+                core_events.Concurrence([self.event0, self.event1]), 5, 7
             ),
         ]
         self.timeline = timeline_interfaces.TimeLine(self.event_placement_list)
@@ -145,38 +140,38 @@ class EventPlacementTupleToSplitEventPlacementDictTest(unittest.TestCase):
     def test_convert(self):
         self.tag0, self.tag1 = "ab"
         self.event0, self.event1 = (
-            core_events.TaggedSimultaneousEvent(
-                [core_events.SequentialEvent([core_events.SimpleEvent(1)])], tag=tag
+            core_events.Concurrence(
+                [core_events.Consecution([core_events.Chronon(1)])], tag=tag
             )
             for tag in (self.tag0, self.tag1)
         )
         self.event_placement_tuple = (
             timeline_interfaces.EventPlacement(
-                core_events.SimultaneousEvent([self.event1]), 0, 4
+                core_events.Concurrence([self.event1]), 0, 4
             ),
             timeline_interfaces.EventPlacement(
-                core_events.SimultaneousEvent([self.event0]), 1, 3
+                core_events.Concurrence([self.event0]), 1, 3
             ),
             timeline_interfaces.EventPlacement(
-                core_events.SimultaneousEvent([self.event0, self.event1]), 5, 7
+                core_events.Concurrence([self.event0, self.event1]), 5, 7
             ),
         )
 
         self.split_event_placement_tuple0 = (
             timeline_interfaces.EventPlacement(
-                core_events.SimultaneousEvent([self.event0]), 1, 3
+                core_events.Concurrence([self.event0]), 1, 3
             ),
             timeline_interfaces.EventPlacement(
-                core_events.SimultaneousEvent([self.event0]), 5, 7
+                core_events.Concurrence([self.event0]), 5, 7
             ),
         )
 
         self.split_event_placement_tuple1 = (
             timeline_interfaces.EventPlacement(
-                core_events.SimultaneousEvent([self.event1]), 0, 4
+                core_events.Concurrence([self.event1]), 0, 4
             ),
             timeline_interfaces.EventPlacement(
-                core_events.SimultaneousEvent([self.event1]), 5, 7
+                core_events.Concurrence([self.event1]), 5, 7
             ),
         )
 
@@ -197,11 +192,11 @@ class EventPlacementTupleToSplitEventPlacementDictTest(unittest.TestCase):
 
 class EventPlacementTupleToGaplessEventPlacementTupleTest(unittest.TestCase):
     def test_convert(self):
-        event = core_events.SimultaneousEvent(
-            [core_events.TaggedSimpleEvent(1, tag="a")]
+        event = core_events.Concurrence(
+            [core_events.Chronon(1, tag="a")]
         )
-        rest = core_events.SimultaneousEvent(
-            [core_events.TaggedSimpleEvent(0, tag="a")]
+        rest = core_events.Concurrence(
+            [core_events.Chronon(0, tag="a")]
         )
         event_placement_tuple = (
             timeline_interfaces.EventPlacement(event, 0, 4),
